@@ -57,6 +57,7 @@ SOCKET WINAPI XSocketBind(SOCKET s, const struct sockaddr *name, int namelen)
 {
 	int port = (((struct sockaddr_in*)name)->sin_port);
 
+	
 	if (ntohs(port) == 1001)
 	{
 		game_sock = s;
@@ -236,32 +237,22 @@ int WINAPI XSocketSendTo(SOCKET s, const char *buf, int len, int flags, sockaddr
 		switch (htons(port))
 		{
 			case 1000:
-				User.pmap_a_mutex.lock();
-
 				nPort = User.pmap_a[iplong];
 
-				User.pmap_a_mutex.unlock();
 
 				if (nPort != 0)
 				{
-					//TRACE("XSocketSendTo() port 1000 nPort: %i secure: %08X", htons(nPort), iplong);
 					SendStruct.sin_port = nPort;
 				}
-				//else
-				//	TRACE("XSOcketSendTo() port 1000 nPort == 0 secure: %08X", iplong);
 			break;
 
 			case 1001:
-				
-				User.pmap_b_mutex.lock();
-
 				nPort = User.pmap_b[iplong];
 
-				User.pmap_b_mutex.unlock();
+
 
 				if (nPort != 0)
 				{
-					//TRACE("XSocketSendTo() port 1001 nPort: %i secure: %08X", htons(nPort), iplong);
 					SendStruct.sin_port = nPort;
 				}
 
@@ -274,11 +265,8 @@ int WINAPI XSocketSendTo(SOCKET s, const char *buf, int len, int flags, sockaddr
 
 		std::pair <ULONG, SHORT> hostpair = std::make_pair(iplong, SendStruct.sin_port);
 
-		User.xnmap_mutex.lock();
-
 		u_long xn = User.xnmap[iplong];
 
-		User.xnmap_mutex.unlock();
 
 		if (xn != 0)
 		{
@@ -326,23 +314,15 @@ int WINAPI XSocketRecvFrom(SOCKET s, char *buf, int len, int flags, sockaddr *fr
 			if (*(ULONG*)buf == 0x11223344)
 			{
 				TRACE("XSocketRecvFrom() Got security packet form iplong: %08X:%i", iplong,htons(port));
-				
-				User.smap_mutex.lock();
-
 					User.smap[hostpair] = *(ULONG*)(buf+4);
-				
-				User.smap_mutex.unlock();
-
 				TRACE("XSocketRecvFrom() Security packet address: %08X", *(ULONG*)(buf + 4));
 
 				ret = 0;
 			}
 
-			User.smap_mutex.lock();
 
-				ULONG secure = User.smap[hostpair];
+			ULONG secure = User.smap[hostpair];
 
-			User.smap_mutex.unlock();
 
 			(((struct sockaddr_in*)from)->sin_addr.s_addr) = secure;
 
@@ -358,18 +338,11 @@ int WINAPI XSocketRecvFrom(SOCKET s, char *buf, int len, int flags, sockaddr *fr
 			switch (User.sockmap[s])
 			{
 				case 1000:
-					
-					User.pmap_a_mutex.lock();
-					//TRACE("XSocketRecvFrom() User.sockmap mapping port 1000 - port: %i, secure: %08X", htons(port), secure);
 						User.pmap_a[secure] = port;
-					User.pmap_a_mutex.unlock();
 				break;
 
 				case 1001:
-					User.pmap_a_mutex.lock();
-					//TRACE("XSocketRecvFrom() User.sockmap mapping port 1001 - port: %i, secure: %08X", htons(port), secure);
 						User.pmap_b[secure] = port;
-					User.pmap_a_mutex.unlock();
 				break;
 
 				default:
@@ -404,10 +377,8 @@ int WINAPI XNetUnregisterKey(DWORD)
 // #60: XNetInAddrToXnAddr
 INT   WINAPI XNetInAddrToXnAddr(const IN_ADDR ina, XNADDR * pxna, XNKID * pxnkid)
 {
-	User.cusers_mutex.lock();
-		CUser* user = User.cusers[ina.s_addr];
-	User.cusers_mutex.unlock();
-
+	CUser* user = User.cusers[ina.s_addr];
+	
 	if (user != 0)
 	{
 		memset(pxna, 0x00, sizeof(XNADDR)); // Zero memory of the current buffer passed to us by the game.
@@ -419,9 +390,8 @@ INT   WINAPI XNetInAddrToXnAddr(const IN_ADDR ina, XNADDR * pxna, XNKID * pxnkid
 		TRACE("XnetInAddrToXnAddr() - Data did not exist calling User.GetXNFromSecure()");
 
 		ULONG xnaddr = User.GetXNFromSecure(ina.s_addr);
-		User.cusers_mutex.lock();
-			user = User.cusers[ina.s_addr];
-		User.cusers_mutex.unlock();
+		user = User.cusers[ina.s_addr];
+	
 
 		memset(pxna, 0x00, sizeof(XNADDR)); // Zero the memory of the current buffer before doing the copy.
 		memcpy(pxna, &user->pxna, sizeof(XNADDR));
@@ -434,7 +404,18 @@ INT   WINAPI XNetInAddrToXnAddr(const IN_ADDR ina, XNADDR * pxna, XNKID * pxnkid
 // #63: XNetUnregisterInAddr
 int WINAPI XNetUnregisterInAddr(const IN_ADDR ina)
 {
-	User.UnregisterSecureAddr(ina);
+
+	/*
+
+	  I'm thinking about ditching the unregister... 
+	  Due to the fact it won't consume too much memory not doing it and it will basically just cache everyone's shit.
+	  
+	  So it's a matter of if we want to reduce resource usage and reduce performance at the same time, or increase performance and increase resource usage.
+	  
+	  Most people have enough RAM these days we can get away with leaving this as a hacky ass implementation
+
+	  */
+	//User.UnregisterSecureAddr(ina);
 	TRACE("XNetUnregisterInAddr: %08X",ina.s_addr);
 	return 0;
 }

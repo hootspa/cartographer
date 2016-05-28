@@ -100,17 +100,10 @@ ULONG CUserManagement::GetSecureFromXN(XNADDR* pxna)
 				nUser->pina.s_addr = secure;
 				nUser->bValid = true;
 
-				this->cusers_mutex.lock();
-				this->xnmap_mutex.lock();
-				this->xntosecure_mutex.lock();
-
-					this->cusers[secure] = nUser;
-					this->xnmap[secure] = pxna->ina.s_addr;
-					this->xntosecure[ab] = secure;
+				this->cusers[secure] = nUser;
+				this->xnmap[secure] = pxna->ina.s_addr;
+				this->xntosecure[ab] = secure;
 	
-				this->cusers_mutex.unlock();
-				this->xnmap_mutex.unlock();
-				this->xntosecure_mutex.unlock();
 
 				RecvPak.Clear();
 				break;
@@ -147,13 +140,6 @@ void CUserManagement::CreateUser(XNADDR* pxna)
 
 	nUser->bValid = true;
 
-	this->cusers_mutex.lock();
-	this->xnmap_mutex.lock();
-	this->xntosecure_mutex.lock();
-	this->smap_mutex.lock();
-	this->pmap_a_mutex.lock();
-	this->pmap_b_mutex.lock();
-
 	/*
 		In theory to handle mutliple instance servers in the future what we can do is populate the port field of CreateUser,
 		Then map the shit before we actually attempt a connection to the server here...
@@ -173,22 +159,15 @@ void CUserManagement::CreateUser(XNADDR* pxna)
 	std::pair <ULONG, SHORT> hostpair = std::make_pair(pxna->ina.s_addr, htons(1001)); // FIX ME ^, this is gonna get really fucked when servers listen on other ports...
 	std::pair <ULONG, SHORT> hostpair_1000 = std::make_pair(pxna->ina.s_addr, htons(1000)); // FIX ME ^
 
-
-
 	this->smap[hostpair] = secure;
 	this->smap[hostpair_1000] = secure;
 	this->cusers[secure] = nUser;
 	this->xnmap[secure] = pxna->ina.s_addr;
 	this->xntosecure[ab] = secure;
+
+	// We're basically racing here but haven't encountered issues yet, does the game handle this some how?
 	this->pmap_a[secure] = htons(1000); // FIX ME, ^ SEE ABOVE 1000 STATIC DEF.
 	this->pmap_b[secure] = htons(1001); // FIX ME, ^ SEE ABOVE 1001 STATIC DEF.
-
-	this->pmap_a_mutex.unlock();
-	this->pmap_b_mutex.unlock();
-	this->smap_mutex.unlock();
-	this->cusers_mutex.unlock();
-	this->xnmap_mutex.unlock();
-	this->xntosecure_mutex.unlock();
 
 }
 
@@ -271,17 +250,9 @@ ULONG CUserManagement::GetXNFromSecure(ULONG secure)
 				TRACE("GetXNFromSecure() - secure: %08X", secure);
 				TRACE("GetXNFromSecure() - xnaddr: %08X", xnaddress);
 
-				this->cusers_mutex.lock();
-				this->xnmap_mutex.lock();
-				this->xntosecure_mutex.lock();
-
-					this->cusers[secure] = nUser;
-					this->xnmap[secure] = xnaddress;
-					this->xntosecure[abEnet] = secure;
-
-				this->cusers_mutex.unlock();
-				this->xnmap_mutex.unlock();
-				this->xntosecure_mutex.unlock();
+				this->cusers[secure] = nUser;
+				this->xnmap[secure] = xnaddress;
+				this->xntosecure[abEnet] = secure;
 
 				RecvPak.Clear();
 				break;
