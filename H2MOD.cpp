@@ -5,7 +5,7 @@
 #include "H2MOD.h"
 #include "H2MOD_GunGame.h"
 #include "Network.h"
-#include "xliveless.h"
+#include "Globals.h"
 #include "CUser.h"
 
 H2MOD *h2mod = new H2MOD();
@@ -28,6 +28,24 @@ int __cdecl call_get_object(signed int object_datum_index, int object_type)
 	get_object pget_object = (get_object)((char*)h2mod->GetBase() + 0x1304E3);
 
 	return pget_object(object_datum_index, object_type);
+}
+
+
+int __cdecl call_unit_get_team_index(int unit_datum_index) {
+
+	TRACE("unit_get_team_index(unit_datum_index: %08X)", unit_datum_index);
+
+	typedef int(__cdecl *unit_get_team_index)(int unit_datum_index);
+	//30002BD8
+	//old one = 0x13A531
+	unit_get_team_index punit_get_team_index = (unit_get_team_index)(((char*)h2mod->GetBase()) + 0x13A531);
+
+	if (unit_datum_index != -1 && unit_datum_index != 0)
+	{
+		return punit_get_team_index(unit_datum_index);
+	}
+
+	return 0;
 }
 
 int __cdecl call_unit_reset_equipment(int unit_datum_index)
@@ -120,6 +138,64 @@ void GivePlayerWeapon(int PlayerIndex, int WeaponId)
 
 }
 
+void H2MOD::get_player_name(int playerIndex, char* buffer, int size) {
+	//30002B5C (player1 gt)
+	//0x204 difference from gt to each gt
+	wchar_t _buffer[64];
+	ReadProcessMemory(GetCurrentProcess(), (LPVOID)((0x30002B5C + (playerIndex * 0x204))), &_buffer, sizeof(_buffer) / 2, NULL);
+	wcstombs(buffer, _buffer, size);
+}
+
+DWORD H2MOD::get_generated_id(int playerIndex) {
+	//get the starting address for the first player xuid
+	//case address to a unsigned long* (DWORD), then dereference it, so we get the current address
+	//move to the given player index
+	//TODO: need offset otherwise it won't work on every server
+	return *(((DWORD*)(0x30002B44) + (playerIndex * 0x204)));
+	//return (*(DWORD*)player_table_ptr);
+}
+
+float H2MOD::get_player_x(int playerIndex) {
+	//halo2.exe+4C072C
+	return 0.0f;
+}
+
+float H2MOD::get_player_y(int playerIndex) {
+	//halo2.exe+4C0728
+	return 0.0f;
+}
+
+float H2MOD::get_player_z(int playerIndex) {
+	//halo2.exe+4C0730
+	return 0.0f;
+}
+
+XUID H2MOD::get_xuid(int playerIndex) {
+	//0x01BD8F68
+	return *(((XUID*)(this->GetBase() + 0x968F68 + (playerIndex * 8))));
+}
+
+BYTE H2MOD::get_team_id(int playerIndex) {
+	//halo2.exe+2fc22bd8+288
+	int address = (0x30002BD8 + (playerIndex * 0x204));
+	//int address = (this->GetBase() + 0x2fc22bd8 + (playerIndex * 0x204));
+	TRACE_GAME_N("playerindex-%d, baseAddress=%d, baseAddressHex=0x%08x, address=%d, addressHex=0x%08x", playerIndex, this->GetBase(), this->GetBase(), address, address);
+	return *(((BYTE*)address));
+}
+
+/*
+ * Checks if the given players are on the same team
+ */
+BOOL H2MOD::is_same_team(int p1, int p2) {
+	BYTE p1Team = h2mod->get_team_id(p1);
+	BYTE p2Team = h2mod->get_team_id(p2);
+	return p1Team == p2Team;
+}
+
+int H2MOD::get_unit_team_index(int pIndex) {
+	return call_unit_get_team_index(get_unit_datum_from_player_index(pIndex));
+}
+
 int H2MOD::get_unit_datum_from_player_index(int pIndex)
 {
 	int unit = 0;
@@ -149,6 +225,71 @@ spawn_player pspawn_player;
 typedef bool(__cdecl *membership_update_network_decode)(int a1, int a2, int a3);
 membership_update_network_decode pmembership_update_network_decode;
 
+//sub_1cce9b
+typedef int(__stdcall *calls_session_boot)(void*, int, char);
+calls_session_boot calls_session_boot_method;
+
+int __stdcall calls_session_boot_sub_1cce9b(void* thisx, int a2, char a3) {
+	//a3 is 1 or 0
+	//when i got booted it was 1
+	//a2 mighttt be player index
+	TRACE_GAME_N("session boot - this=%d,a2=%d,a3=%d", thisx, a2, a3);
+	return calls_session_boot_method(thisx, a2, a3);
+}
+
+void H2MOD::kick_player(int playerIndex) {
+	//enable boot menu
+	//*(((BYTE*)(0x30002B1C) + (playerIndex * 0x204))) = 1;
+
+	//only works on my machine
+	//DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x00505720);
+	//don't work
+	//DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x008578E0);
+	//DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x5178E0);
+	//halo2.exe+420FE8 points to the pointer needed here
+	DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x420FE8);
+	TRACE_GAME_N("about to kick player index=%d", playerIndex);
+	calls_session_boot_method((DWORD*)(*ptr), playerIndex, (char)0x01);
+}
+
+//sub_1458759
+typedef int(__stdcall *write_chat_text)(void*, int);
+write_chat_text write_chat_text_method;
+
+int __stdcall write_chat_hook(void* pObject, int a2) {
+	/*
+	sub_14A7567((int)&v14, 0x79u, a2);            // this function def populates v14 with whatevers in the input component
+  sub_13D1855((int)&v7);
+  v5 = sub_142B37B(); //can use this to get the this* object we need to even utilize write_chat_text_method
+  return sub_1458759(v5, (int)&v7);             // this method that gets invoked here has logic in that that appends the GamerTag : or Server : to the chatbox line
+	*/
+
+	wchar_t* chatStringWChar = (wchar_t*)(a2 + 20);
+	char chatStringChar[119];
+	wcstombs(chatStringChar, chatStringWChar, 119);
+	TRACE_GAME_N("chat_string=%s", chatStringChar);
+	std::string str(chatStringChar);
+	if (h2mod->handle_command(str)) {
+		return write_chat_text_method(pObject, a2);
+	}
+	return 0;
+}
+
+BOOL H2MOD::handle_command(std::string command) {
+	return commands->handle_command(command);
+}
+
+int H2MOD::write_chat(wchar_t* data) {
+	//		0x01b93ac8-h2mod->GetBase()	0x00973ac8	unsigned long
+	//		0x0018f734-h2mod->GetBase()	0xfef6f734	unsigned long
+	//		(DWORD*)(((char*)h2mod->GetBase()) + 0xfef6f734)	0x0018f734	unsigned long *
+	//		(void*)(DWORD*)(((char*)h2mod->GetBase()) + 0xfef6f734)	0x0018f734	void *
+
+	//seems to work for in game lobby and pre game lobby
+	DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x00973ac8);
+
+	return write_chat_hook((void*)ptr, (int)&(*data) - 20);
+}
 
 typedef int(__cdecl *game_difficulty_get_real_evaluate)(int a1, int a2);
 game_difficulty_get_real_evaluate pgame_difficulty_get_real_evaluate;
@@ -241,11 +382,13 @@ int __cdecl OnMapLoad(int a1)
 		BYTE* garbage_collect = (BYTE*)(game_globals + 0xC);
 		*(garbage_collect) = 1;
 		MasterState = 5;
+		isLobby = true;
 
 	}
 	else 
 	{
 		MasterState = 4;
+		isLobby = false;
 	}
 
 	if (!memcmp(quarntine_zone, (BYTE*)0x300017E0, 86) && *(engine_mode) == 2 ) // check the map and if we're loading a multiplayer game (We don't want to fuck up normal campaign)
@@ -312,14 +455,35 @@ bool __cdecl OnPlayerSpawn(int a1)
 #pragma endregion
 	TRACE("OnPlayerSpawn(a1: %08X)", a1);
 	
-	int PlayerIndex = a1 & 0x000FFFF;
+	int playerIndex = a1 & 0x000FFFF;
 
 
 
 #pragma region GunGame Handler
 	if (b_GunGame == 1)
-		gg->SpawnPlayer(PlayerIndex);
+		gg->SpawnPlayer(playerIndex);
 #pragma endregion
+
+	char gamertag[32];
+	h2mod->get_player_name(playerIndex, gamertag, 32);
+	XUID xuid = h2mod->get_xuid(playerIndex);
+	
+	//TODO: just create player struct
+	xuidPlayerIndexMap[xuid] = playerIndex;
+	//TODO: not working right?
+	nameToXuidIndexMap[gamertag] = xuid;
+	nameToPlayerIndexMap[gamertag] = playerIndex;
+
+	for (auto it = nameToPlayerIndexMap.begin(); it != nameToPlayerIndexMap.end(); ++it) {
+		char* name = it->first;
+		int index = it->second;
+
+		TRACE_GAME_N("PlayerMap-PlayerName=%s, PlayerIndex=%d", name, index);
+	}
+
+	BYTE teamIndex = h2mod->get_team_id(playerIndex);
+	int teamIndex2 = h2mod->get_unit_team_index(playerIndex);
+	TRACE_GAME_N("player-%d gamertag:%s, teamIndex:%u, teamIndex2:%d, xuid:%llu", playerIndex, gamertag, teamIndex, teamIndex2, xuid);
 
 
 	return ret;
@@ -435,6 +599,20 @@ void H2MOD::ApplyHooks()
 		pconnect_establish_write = (tconnect_establish_write)DetourFunc((BYTE*)this->GetBase() + 0x1F1A2D, (BYTE*)connect_establish_write, 5);
 		VirtualProtect(pconnect_establish_write, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
+    		//lobby chatbox
+		write_chat_text_method = (write_chat_text)DetourClassFunc((BYTE*)this->GetBase() + 0x238759, (BYTE*)write_chat_hook, 8);
+		VirtualProtect(write_chat_text_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		//detect host/client
+		pjoin_game = (tjoin_game)DetourClassFunc((BYTE*)this->GetBase() + 0x1CDADE, (BYTE*)join_game, 13);
+		VirtualProtect(pjoin_game, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		//0x1CCE9B
+		calls_session_boot_method = (calls_session_boot)DetourClassFunc((BYTE*)this->GetBase() + 0x1CCE9B, (BYTE*)calls_session_boot_sub_1cce9b, 8);
+		VirtualProtect(calls_session_boot_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		//is_host_method = (is_host)DetourClassFunc((BYTE*)this->GetBase() + 0x211973, (BYTE*)is_host_hook, 10);
+		//VirtualProtect(is_host_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 	}
 	
 

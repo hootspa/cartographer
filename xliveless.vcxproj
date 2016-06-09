@@ -82,13 +82,14 @@
       <ProgramDataBaseFileName>.\Release/</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalIncludeDirectories>.\teamlog;.\teamspeak;.\soundbackends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;libprotobuf_release.lib;d3d9.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;libprotobuf_release.lib;d3d9.lib;d3dx9.lib;ts3client_win32.lib;ts3server_win32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>../Halo 2/xlive.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ModuleDefinitionFile>.\xlive.def</ModuleDefinitionFile>
@@ -126,14 +127,15 @@
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <AdditionalIncludeDirectories>.\teamlog;.\teamspeak;.\soundbackends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;libprotobuf.lib;d3d9.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>../../Halo 2/xlive.dll</OutputFile>
+      <AdditionalDependencies>ws2_32.lib;libprotobuf.lib;d3d9.lib;d3dx9.lib;ts3client_win32.lib;ts3server_win32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>../Halo 2/xlive.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ModuleDefinitionFile>.\xlive.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -150,14 +152,11 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="MinHook\build\libMinHook.vcxproj">
-      <Project>{65021938-d251-46fa-bc3d-85c385d4c06d}</Project>
-      <CopyLocalSatelliteAssemblies>true</CopyLocalSatelliteAssemblies>
-      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="cartographer_main.cpp" />
+    <ClCompile Include="Globals.cpp" />
+    <ClCompile Include="H2ChatBoxCommands.cpp" />
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="TSClient.cpp" />
     <ClCompile Include="CUser.cpp" />
     <ClCompile Include="Detour.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Disabled</Optimization>
@@ -171,11 +170,17 @@
     <ClCompile Include="Hook.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="packet.pb.cc" />
+    <ClCompile Include="TSServer.cpp" />
+    <ClCompile Include="TSUsers.cpp" />
     <ClCompile Include="xliveless.cpp" />
     <ClCompile Include="xlive_network.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cartographer_main.hpp" />
+    <ClInclude Include="Globals.h" />
+    <ClInclude Include="H2ChatBoxCommands.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="TSClient.h" />
     <ClInclude Include="CUser.h" />
     <ClInclude Include="Detour.h" />
     <ClInclude Include="GUI.h" />
@@ -185,10 +190,13 @@
     <ClInclude Include="Hook.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="packet.pb.h" />
+    <ClInclude Include="TSServer.h" />
+    <ClInclude Include="TSUsers.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="xlivedefs.h" />
     <ClInclude Include="xliveless.h" />
+    <ClInclude Include="xlive_network.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="xlive.def" />

@@ -3,6 +3,7 @@
 #define H2MOD_H
 #include "Hook.h"
 #include <unordered_map>
+#include "xliveless.h"
 
 
 
@@ -49,6 +50,7 @@ enum Weapon
 };
 
 int __cdecl call_get_object(signed int object_datum_index, int object_type);
+int __cdecl call_unit_get_team_index(int unit_datum_index);
 int __cdecl call_unit_reset_equipment(int unit_datum_index);
 int __cdecl call_hs_object_destroy(int object_datum_index);
 signed int __cdecl call_unit_inventory_next_weapon(unsigned short unit_datum_index);
@@ -65,6 +67,21 @@ public:
 		void EstablishNetwork();
 		int get_unit_from_player_index(int);
 		int get_unit_datum_from_player_index(int);
+		int get_unit_team_index(int);
+
+
+		BOOL is_same_team(int p1, int p2);
+		BYTE get_team_id(int playerIndex);
+		void kick_player(int playerIndex);
+		float get_player_x(int);
+		float get_player_y(int);
+		float get_player_z(int);
+		void get_player_name(int, char*, int);
+		BOOL handle_command(std::string);
+		DWORD get_generated_id(int);
+		XUID get_xuid(int);
+		//int is_server();
+		int write_chat(wchar_t*);
 		void ApplyHooks();
 		DWORD GetBase();
 		

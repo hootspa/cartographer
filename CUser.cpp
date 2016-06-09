@@ -3,6 +3,7 @@
 #include "packet.pb.h"
 #include <time.h>
 #include <sstream>
+#include "Globals.h"
 
 extern ULONG broadcast_server;
 extern SOCKET boundsock;
@@ -454,6 +455,8 @@ BOOL CUserManagement::GetLocalXNAddr(XNADDR* pxna)
 	if (Users[0].bValid)
 	{
 		memcpy(pxna, &Users[0].pxna, sizeof(XNADDR));
+		IN_ADDR addr = pxna->ina;
+		clientMachineAddress = addr;
 		TRACE("GetLocalXNAddr: Returned");
 		return TRUE;
 	}

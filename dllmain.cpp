@@ -2,6 +2,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include "H2MOD.h"
+#include "Globals.h"
 #include <iostream>
 using namespace std;
 
@@ -14,8 +15,13 @@ CRITICAL_SECTION d_lock;
 
 UINT g_online = 1;
 UINT g_debug = 0;
+UINT g_server = 0;
+UINT voice_chat = 0;
+BOOL isHost = false;
 
-ULONG broadcast_server = inet_addr("174.37.215.13");
+//ULONG broadcast_server = inet_addr("174.37.215.13");
+
+ULONG broadcast_server = inet_addr("149.56.81.89");
 
 UINT g_signin[4] = { 1,0,0,0 };
 CHAR g_szUserName[4][16+1] = { "Cartographer", "Cartographer", "Cartographer", "Cartographer" };
@@ -258,6 +264,7 @@ void InitInstance()
 				CHECK_ARG_STR("password =", g_szPassword);
 				CHECK_ARG("debug log = ", g_debug);
 				CHECK_ARG("gungame =", b_GunGame);
+				CHECK_ARG("voice_chat = ", voice_chat);
 			}
 
 			
@@ -312,23 +319,23 @@ void InitInstance()
 		
 #pragma endregion
 
-		if (g_debug)
+		if (h2mod)
+			h2mod->Initialize();
+		else
+			TRACE("H2MOD Failed to intialize");
+
+		if( g_debug )
 		{
-			if (logfile = _wfopen(L"xlive_trace.log", L"wt"))
+			if ( logfile = _wfopen(L"xlive_trace.log", L"wt") )
 				TRACE("Log started (xLiveLess 2.0a4)\n");
 
-			if (loggame = _wfopen(L"h2mod.log", L"wt"))
-				TRACE_GAME("Log started (H2MOD 0.1a1)\n");
+			if ( loggame = _wfopen(L"h2mod.log", L"wt") )
+				 TRACE_GAME("Log started (H2MOD 0.1a1)\n");
 
 			if (loggamen = _wfopen(L"h2network.log", L"wt"))
 				TRACE_GAME_NETWORK("Log started (H2MOD - Network 0.1a1)\n");
-		}
 
-			if (h2mod)
-				h2mod->Initialize();
-			else
-				TRACE("H2MOD Failed to intialize");
-
+			TRACE("g_server param = %i", g_server);
 			TRACE("[GunGame] : %i", b_GunGame);
 			if (b_GunGame == 1)
 			{
@@ -342,8 +349,18 @@ void InitInstance()
 			GetModuleFileNameW( NULL, (LPWCH) &gameName, sizeof(gameName) );
 			TRACE( "%s", gameName );
 
+		}
 		
+		if (voice_chat) {
+			server = new TSServer(g_debug);
 
+			if (h2mod->Server) {
+				//if this is the dedicated server, go ahead, and start the team speak server
+				server->setPort(1007);
+				server->setConnectClient(false);
+				server->startListening();
+			}
+		}
 
 		extern void LoadAchievements();
 		LoadAchievements();

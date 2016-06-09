@@ -43,6 +43,9 @@
     <Filter Include="Source Files\H2MOD\GUI\Source Files\Direct3D9">
       <UniqueIdentifier>{933eb738-ef3b-4896-a991-645018ac135b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\xlive\Team Speak">
+      <UniqueIdentifier>{c868e5f0-c878-4382-b0d8-b18483520bff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -84,6 +87,24 @@
     <ClCompile Include="H2MOD_GunGame.cpp">
       <Filter>Source Files\H2MOD\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TSClient.cpp">
+      <Filter>Source Files\xlive\Team Speak</Filter>
+    </ClCompile>
+    <ClCompile Include="TSServer.cpp">
+      <Filter>Source Files\xlive\Team Speak</Filter>
+    </ClCompile>
+    <ClCompile Include="TSUsers.cpp">
+      <Filter>Source Files\xlive\Team Speak</Filter>
+    </ClCompile>
+    <ClCompile Include="Globals.cpp">
+      <Filter>Source Files\xlive</Filter>
+    </ClCompile>
+    <ClCompile Include="H2ChatBoxCommands.cpp">
+      <Filter>Source Files\H2MOD\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files\xlive</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -124,6 +145,28 @@
     </ClInclude>
     <ClInclude Include="H2MOD_GunGame.h">
       <Filter>Source Files\H2MOD\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TSClient.h">
+      <Filter>Source Files\xlive\Team Speak</Filter>
+    </ClInclude>
+    <ClInclude Include="TSServer.h">
+      <Filter>Source Files\xlive\Team Speak</Filter>
+    </ClInclude>
+    <ClInclude Include="TSUsers.h">
+      <Filter>Source Files\xlive\Team Speak</Filter>
+    </ClInclude>
+    <ClInclude Include="Globals.h">
+      <Filter>Source Files\xlive</Filter>
+    </ClInclude>
+    <ClInclude Include="H2ChatBoxCommands.h">
+      <Filter>Source Files\H2MOD\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Source Files\xlive</Filter>
+    </ClInclude>
+    <ClInclude Include="xlive_network.h">
+      <Filter>Source Files\xlive</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource1.h">
       <Filter>Header Files</Filter>

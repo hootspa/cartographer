@@ -7,6 +7,8 @@
 #include <thread>
 #include "h2mod.h"
 #include <mutex>
+#include "h2mod.h"
+#include "Globals.h"
 
 extern ULONG broadcast_server;
 
@@ -106,6 +108,8 @@ INT WINAPI XNetCreateKey(XNKID * pxnkid, XNKEY * pxnkey)
 		pxnkid->ab[0] &= ~XNET_XNKID_MASK;
 		pxnkid->ab[0] |= XNET_XNKID_SYSTEM_LINK;
 
+		//only the server ever creates the session key
+		isServer = true;
 
 	}
 	return 0;
@@ -276,6 +280,15 @@ int WINAPI XSocketSendTo(SOCKET s, const char *buf, int len, int flags, sockaddr
 		{
 			SendStruct.sin_addr.s_addr = User.GetXNFromSecure(iplong);
 		}
+    
+    IN_ADDR addr = SendStruct.sin_addr;
+		//TRACE("XSocketSendTo - hostname=%d.%d.%d.%d", addr.S_un.S_un_b.s_b1, addr.S_un.S_un_b.s_b2, addr.S_un.S_un_b.s_b3, addr.S_un.S_un_b.s_b4);
+
+		if (!clientServerAddressSet) {
+			//set the first secure address we get back from server, we are assuming this is the servers address..
+			clientServerAddress = addr;
+			clientServerAddressSet = true;
+		}
 
 	int ret = sendto(s, buf, len, flags, (SOCKADDR *) &SendStruct, sizeof(SendStruct));
 
@@ -363,6 +376,7 @@ int WINAPI XSocketRecvFrom(SOCKET s, char *buf, int len, int flags, sockaddr *fr
 int WINAPI XNetRegisterKey(DWORD, DWORD)
 {
 	TRACE("XNetRegisterKey");
+	clientServerAddressSet = false;
 	return 0;
 }
 

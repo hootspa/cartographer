@@ -49,3 +49,14 @@ extern void trace_game_network(LPSTR message, ...);
 #endif
 
 #endif
+
+typedef ULONGLONG XUID;
+typedef XUID *PXUID;
+
+//TODO: probably should go somewhere else
+void cleanupClientAndServer();
+void startClient(bool startChatting);
+void startServer();
+
+typedef struct _XOVERLAPPED             XOVERLAPPED, *PXOVERLAPPED;
+DWORD WINAPI XSessionLeaveRemote(HANDLE hSession, DWORD dxXuidCount, const XUID *pXuids, PXOVERLAPPED pXOverlapped);
