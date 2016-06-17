@@ -37,8 +37,6 @@ extern std::unordered_map<char*, XUID> nameToXuidIndexMap;
 extern std::unordered_map<char*, int> nameToPlayerIndexMap;
 
 extern TSClient* client;
-extern IN_ADDR clientServerAddress;
-extern bool clientServerAddressSet;
 extern bool stopClient;
 
 extern TSServer* server;
@@ -60,4 +58,5 @@ extern HANDLE *currentSessionHandle;
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
 std::vector<std::string> split(const std::string &s, char delim);
+int stripWhitespace(wchar_t *inputStr);
 #endif

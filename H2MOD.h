@@ -73,15 +73,18 @@ public:
 		BOOL is_same_team(int p1, int p2);
 		BYTE get_team_id(int playerIndex);
 		void kick_player(int playerIndex);
+		IN_ADDR get_server_address();
 		float get_player_x(int);
 		float get_player_y(int);
 		float get_player_z(int);
 		void get_player_name(int, char*, int);
+		void get_player_name2(int playerIndex, char* buffer, int size);
 		BOOL handle_command(std::string);
 		DWORD get_generated_id(int);
 		XUID get_xuid(int);
 		//int is_server();
-		int write_chat(wchar_t*);
+		int write_chat_dynamic(const wchar_t* data);
+		int write_chat_literal(const wchar_t* data);
 		void ApplyHooks();
 		DWORD GetBase();
 		

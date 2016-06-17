@@ -3125,9 +3125,17 @@ void startClient(bool startThread) {
 	IN_ADDR serverAddr;
 	if (isServer) {
 		serverAddr = clientMachineAddress;
+		//TODO: if we cannot get the current client machine address via GetLocalXNAddr which populates client Machine address
+		//there are a few offsets we can use (one reason this would happen if the master server isn't up)
+		/*
+		halo2.exe+507C18
+		halo2.exe+51C48B
+		xlive.dll+5A4434
+		xlive.dll+5A4434
+		*/
 		TRACE_GAME_N("Client is server and is trying to connect to address %s", inet_ntoa(serverAddr));
 	}	else {
-		serverAddr = clientServerAddress;
+		serverAddr = h2mod->get_server_address();
 		TRACE_GAME_N("Client is NOT server and is trying to connect to address %s", inet_ntoa(serverAddr));
 	}
 	client->setServerAddress(serverAddr);
@@ -3794,9 +3802,6 @@ void cleanupClientAndServer() {
 	//TODO: techinically these bools aren't thread safe (but locking starts to slow it down)
 	//the bools will eventually be set even in race condition scenarios
 	stopClient = true;
-	//reset client connection address
-	clientServerAddressSet = false;
-
 	stopServer = true;
 	//the user may not host a game again, so we unset this
 	isServer = false;

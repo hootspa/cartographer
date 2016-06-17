@@ -41,13 +41,14 @@ void ChatBoxCommands::kick(char* playerName, bool perm) {
 	if (isLobby) {
 		//TODO: the nameToPlayerIndexMap is based on in game player indexes
 		//it is not used while in game, so the indexes aren't right
-		TRACE_GAME_N("Kicking from lobby with player name won't work yet..");
-	}	else {
+		h2mod->write_chat_literal(L"Kicking from lobby with player name won't work yet..");
+	}
+	else {
 		playerIndex = nameToPlayerIndexMap[playerName];
 		for (auto it = nameToPlayerIndexMap.begin(); it != nameToPlayerIndexMap.end(); ++it) {
 			char* name = it->first;
 			int index = it->second;
-			
+
 			TRACE_GAME_N("PlayerMap-PlayerName=%s, PlayerIndex=%d", name, index);
 		}
 		this->kick(nameToPlayerIndexMap[playerName], perm);
@@ -55,6 +56,12 @@ void ChatBoxCommands::kick(char* playerName, bool perm) {
 }
 
 void ChatBoxCommands::kick(int playerIndex, bool perm) {
+	if (isLobby) {
+		//TODO: the nameToPlayerIndexMap is based on in game player indexes
+		//it is not used while in game, so the indexes aren't right
+		h2mod->write_chat_literal(L"Kicking from lobby with player index won't work yet..");
+		return;
+	}
 	h2mod->kick_player(playerIndex);
 	//TODO: write to file for permnanent bans
 }
@@ -71,15 +78,49 @@ bool ChatBoxCommands::isNum(char *s) {
 	return true;
 }
 
+void ChatBoxCommands::listBannedPlayers() {
+	if (!isServer) {
+		//TODO:
+	}
+	else {
+		TRACE_GAME_N(LIST_BANNED_PLAYERS_VALIDATION_MSG);
+	}
+}
+
+void ChatBoxCommands::listPlayers() {
+	for (int i = 0; i < 16; i++) {
+		char gamertag[32];
+		h2mod->get_player_name2(i, gamertag, 32);
+		if ((gamertag != NULL) && (gamertag[0] >= 0x20 && gamertag[0] <= 0x7E)) {
+			wchar_t* unicodeGamertag = new wchar_t[64];
+			mbstowcs(unicodeGamertag, gamertag, 64);
+			//stripWhitespace(unicodeGamertag);
+
+			std::wstringstream oss;
+			oss << "Player " << i << ":" << unicodeGamertag << "/" << "";
+			std::wstring playerLogLine = oss.str();
+			h2mod->write_chat_dynamic(playerLogLine.c_str());
+		}
+	}
+}
+
+void ChatBoxCommands::ban(char* gamertag) {
+	//TODO:
+}
+
+/*
+* Handles the given string command
+* Returns a bool indicating whether the command is a valid command or not
+*/
 BOOL ChatBoxCommands::handle_command(std::string command) {
 	//split by a space
 	std::vector<std::string> splitCommands = split(command, ' ');
 	if (splitCommands.size() != 0) {
 		std::string firstCommand = splitCommands[0];
 		std::transform(firstCommand.begin(), firstCommand.end(), firstCommand.begin(), ::tolower);
-		if (firstCommand == "$" + KICK_STR) {
+		if (firstCommand == "$kick") {
 			if (splitCommands.size() != 3) {
-				TRACE_GAME_N(MISSING_GAMERTAG_AND_BAN_MSG, KICK_STR.c_str(), KICK_STR.c_str());
+				TRACE_GAME_N(KICK_VALIDATION_MSG);
 				return false;
 			}
 			std::string firstArg = splitCommands[1];
@@ -91,15 +132,27 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 
 			if (isNum(cstr)) {
 				kick(atoi(cstr), ban);
-			}	else {
+			}
+			else {
 				kick(cstr, ban);
 			}
 
 			delete[] cstr;
-		}	else if (firstCommand == "$ban") {
-		}	else if (firstCommand == "$" + MUTE_STR) {
+		}
+		else if (firstCommand == "$ban") {
+			if (splitCommands.size() != 2) {
+				TRACE_GAME_N(BAN_VALIDATION_MSG);
+				return false;
+			}
+			std::string firstArg = splitCommands[1];
+			char *cstr = new char[firstArg.length() + 1];
+			strcpy(cstr, firstArg.c_str());
+
+			ban(cstr);
+		}
+		else if (firstCommand == "$mute") {
 			if (splitCommands.size() != 3) {
-				TRACE_GAME_N(MISSING_GAMERTAG_AND_BAN_MSG, MUTE_STR.c_str(), MUTE_STR.c_str());
+				TRACE_GAME_N(MUTE_VALIDATION_MSG);
 				return false;
 			}
 			std::string firstArg = splitCommands[1];
@@ -110,9 +163,12 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 			bool ban = secondArg == "true" ? true : false;
 
 			mute(cstr, ban);
-		}	else if (firstCommand == "$" + UNMUTE_STR) {
-			if (splitCommands.size() != 3) {
-				TRACE_GAME_N(MISSING_GAMERTAG_MSG, UNMUTE_STR, UNMUTE_STR);
+
+			delete[] cstr;
+		}
+		else if (firstCommand == "$unmute") {
+			if (splitCommands.size() != 2) {
+				TRACE_GAME_N(UNMUTE_VALIDATION_MSG);
 				return false;
 			}
 			std::string firstArg = splitCommands[1];
@@ -120,11 +176,29 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 			strcpy(cstr, firstArg.c_str());
 
 			unmute(cstr);
-		}	else if (firstCommand == "$setChatMode") {
-		}	else if (firstCommand == "$listPlayers") {
-		}	else if (firstCommand == "$listBannedPlayers") {
+
+			delete[] cstr;
+		}
+		else if (firstCommand == "$setchatmode") {
+			//TODO:
+		}
+		else if (firstCommand == "$listplayers") {
+			if (splitCommands.size() != 1) {
+				TRACE_GAME_N(LIST_PLAYERS_VALIDATION_MSG);
+				return false;
+			}
+			listPlayers();
+		}
+		else if (firstCommand == "$listbannedplayers") {
+			listBannedPlayers();
+		}
+
+		char c = firstCommand.c_str()[0];
+		if (c == '$') {
+			//if we made it here, we passed any/all validation and executed the command
+			return true;
 		}
 	}
 
-	return true;
+	return false;
 }

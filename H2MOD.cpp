@@ -138,11 +138,23 @@ void GivePlayerWeapon(int PlayerIndex, int WeaponId)
 
 }
 
+//only works in-game
 void H2MOD::get_player_name(int playerIndex, char* buffer, int size) {
 	//30002B5C (player1 gt)
 	//0x204 difference from gt to each gt
 	wchar_t _buffer[64];
 	ReadProcessMemory(GetCurrentProcess(), (LPVOID)((0x30002B5C + (playerIndex * 0x204))), &_buffer, sizeof(_buffer) / 2, NULL);
+	wcstombs(buffer, _buffer, size);
+}
+
+void H2MOD::get_player_name2(int playerIndex, char* buffer, int size) {
+	wchar_t* _buffer;
+
+	//halo2.exe+51A638
+	DWORD* playerNamePtr = (DWORD*)(this->GetBase() + 0x51A638);
+	//difference between players
+	playerNamePtr += (playerIndex * 0xB8);
+	_buffer = (wchar_t*)playerNamePtr;
 	wcstombs(buffer, _buffer, size);
 }
 
@@ -269,7 +281,8 @@ int __stdcall write_chat_hook(void* pObject, int a2) {
 	wcstombs(chatStringChar, chatStringWChar, 119);
 	TRACE_GAME_N("chat_string=%s", chatStringChar);
 	std::string str(chatStringChar);
-	if (h2mod->handle_command(str)) {
+	if (!h2mod->handle_command(str)) {
+		//if we couldn't handle the command, just print the output like regular old text
 		return write_chat_text_method(pObject, a2);
 	}
 	return 0;
@@ -279,7 +292,7 @@ BOOL H2MOD::handle_command(std::string command) {
 	return commands->handle_command(command);
 }
 
-int H2MOD::write_chat(wchar_t* data) {
+int H2MOD::write_chat_dynamic(const wchar_t* data) {
 	//		0x01b93ac8-h2mod->GetBase()	0x00973ac8	unsigned long
 	//		0x0018f734-h2mod->GetBase()	0xfef6f734	unsigned long
 	//		(DWORD*)(((char*)h2mod->GetBase()) + 0xfef6f734)	0x0018f734	unsigned long *
@@ -287,8 +300,16 @@ int H2MOD::write_chat(wchar_t* data) {
 
 	//seems to work for in game lobby and pre game lobby
 	DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x00973ac8);
+	//function at halo2.exe+0x002876Cf, adds 2 onto the data address at some point
+	//in the detour, we need to add the original 20 that gets added as well (see write_chat_literal)
 
-	return write_chat_hook((void*)ptr, (int)&(*data) - 20);
+	//TODO: draws a white square unfortunately...
+	return write_chat_text_method(ptr, (int)&(*data) - 22);
+}
+
+int H2MOD::write_chat_literal(const wchar_t* data) {
+	DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x00973ac8);
+	return write_chat_text_method(ptr, (int)&(*data) - 20);
 }
 
 typedef int(__cdecl *game_difficulty_get_real_evaluate)(int a1, int a2);
@@ -526,6 +547,10 @@ extern SOCKET game_sock;
 extern SOCKET game_sock_1000;
 extern CUserManagement User;
 XNADDR join_game_xn;
+
+IN_ADDR H2MOD::get_server_address() {
+	return join_game_xn.ina;
+}
 
 void __stdcall join_game(void* thisptr, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9, int a10, int a11, char a12, int a13, int a14)
 {
