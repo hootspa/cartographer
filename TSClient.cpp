@@ -5,7 +5,7 @@
 
 #include "Globals.h"
 
-const float TSClient::MAX_CLIENT_VOLUME_MODIFIER = 0.0f;
+const float TSClient::MAX_CLIENT_VOLUME_MODIFIER = 20.0f;
 const float TSClient::MIN_CLIENT_VOLUME_MODIFIER = -60.0f;
 
 TSClient::TSClient(bool log) {
@@ -120,6 +120,9 @@ void TSClient::openPlayback() {
 	if ((error = ts3client_openPlaybackDevice(scHandlerID, "", NULL)) != ERROR_ok) {
 		TRACE("Error opening playback device: %d\n", error);
 	}
+	if ((error = ts3client_setPlaybackConfigValue(scHandlerID, "volume_modifier", "20")) != ERROR_ok) {
+		TRACE("Error setting playback config value: %d\n", error);
+	}
 }
 
 void TSClient::openMicrophone() {
@@ -207,6 +210,17 @@ void TSClient::printCurrentClientVolume(anyID teamspeakClientID) {
 	else {
 		TRACE("current client volume=%d", volume);
 	}
+}
+
+int TSClient::getClientVolume(anyID teamspeakClientID) {
+	int volume;
+	if (ts3client_getClientVariableAsInt(scHandlerID, teamspeakClientID, CLIENT_VOLUME_MODIFICATOR, &volume)) {
+		TRACE("error getting client volume");
+	}
+	else {
+		TRACE("current client volume=%d", volume);
+	}
+	return volume;
 }
 
 /*
@@ -300,7 +314,8 @@ void TSClient::onTalkStatusChangeEvent(uint64 serverConnectionHandlerID, int sta
 			//TODO: move into its own method
 			client->setClientVolume(teamspeakClientID, MAX_CLIENT_VOLUME_MODIFIER);
 			tsUsers->userStartedTalking(remoteId);
-		} else {
+		}
+		else {
 			//TODO: move into its own method
 			int remotePlayerIndex = xuidPlayerIndexMap[remoteId];
 			BYTE remotePlayerTeamIndex = h2mod->get_team_id(remotePlayerIndex);
@@ -309,29 +324,44 @@ void TSClient::onTalkStatusChangeEvent(uint64 serverConnectionHandlerID, int sta
 			int clientPlayerIndex = xuidPlayerIndexMap[clientId];
 			BYTE clientPlayerTeamIndex = h2mod->get_team_id(clientPlayerIndex);
 			TRACE("Client-%d clientPlayerTeamIndex:%u, xuid:%llu", clientPlayerIndex, clientPlayerTeamIndex, clientId);
-			if (chatMode == TEAM_ONLY) {
-				//TODO: this isn't a safe way to do it, people can hack the client dll
-				//tthis needs to be driven by the server using more than one channel
-				if (!h2mod->is_same_team(remotePlayerIndex, clientPlayerIndex)) {
-					TRACE_GAME_N("teams not the same, muting");
-					//not same team, mute
-					client->setClientVolume(teamspeakClientID, MIN_CLIENT_VOLUME_MODIFIER);
-				}	else {
-					//same team, unmute
+			if (clientChatMode == PROXIMITY) {
+				//client only chat mode (can hear everyone based on distance)
+				if (!isLobby) {
+					//TODO: mute based on distance
+					float remoteX, remoteY, remoteZ;
+					float clientX, clientY, clientZ;
+
+					remoteX = h2mod->get_player_x(remotePlayerIndex);
+					remoteY = h2mod->get_player_y(remotePlayerIndex);
+					remoteZ = h2mod->get_player_z(remotePlayerIndex);
+
+					clientX = h2mod->get_player_x(clientPlayerIndex);
+					clientY = h2mod->get_player_y(clientPlayerIndex);
+					clientZ = h2mod->get_player_z(clientPlayerIndex);
+
+					double distance = abs(sqrt((pow((clientX - remoteX), 2)) + (pow((clientY - remoteY), 2) + (pow((clientZ - remoteZ), 2)))));
+
+					//TODO: clip distance into a range between max/min client volume
+				}
+				else {
+					//in the lobby we hear everyone
 					client->setClientVolume(teamspeakClientID, MAX_CLIENT_VOLUME_MODIFIER);
 					tsUsers->userStartedTalking(remoteId);
 				}
-			}	else if (chatMode == PROXIMITY) {
-				//TODO: mute based on distance
-
-			} else if (chatMode == ALL_PLAYERS) {
+			}
+			else if (clientChatMode == ALL_PLAYERS) {
+				//hear everybody all the time
 				client->setClientVolume(teamspeakClientID, MAX_CLIENT_VOLUME_MODIFIER);
 				tsUsers->userStartedTalking(remoteId);
-			}	else {
-				//TODO: this is the off case, what to do here?
+			}
+			else if (clientChatMode == OFF) {
+				//don't listen to anyone
+				client->setClientVolume(teamspeakClientID, MIN_CLIENT_VOLUME_MODIFIER);
+				tsUsers->userStartedTalking(remoteId);
 			}
 		}
-	}	else {
+	}
+	else {
 		TRACE_GAME_N("Client \"%s\" stops talking.", name);
 		tsUsers->userStoppedTalking(remoteId);
 	}

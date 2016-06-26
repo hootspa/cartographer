@@ -1,6 +1,7 @@
 #include "Globals.h"
 
-ChatBoxCommands::ChatBoxCommands() {}
+ChatBoxCommands::ChatBoxCommands() {
+}
 
 void ChatBoxCommands::mute(char* name, bool ban) {
 	//TODO: if server try to mute on the server (if we even can)
@@ -19,29 +20,20 @@ void ChatBoxCommands::unmute(char* name) {
 	}
 }
 
-void ChatBoxCommands::setChatMode(CHAT_MODE mode) {
-	if (!isServer && mode == OFF) {
-		//client asking to turn off voice completely
-		chatMode = OFF;
-		cleanupClientAndServer();
-		return;
-	}
-
-	//the server is trying to change the chat mode
-	chatMode = mode;
-	//TODO: right now just changing the chat mode is as simple as changing this global variable
-	//however once channels are introduced for safe-team-chat, we will need to add logic that
-	//tears down the channels if we switch from team chat to all_players or proximity
-	//TODO: need some sort of templated visitor here for enum
-	//to operate on the old type and the new type
+void ChatBoxCommands::setChatMode(CLIENT_CHAT_MODE mode) {
+	clientChatMode = mode;
 }
 
 void ChatBoxCommands::kick(char* playerName, bool perm) {
+	if (!isServer) {
+		h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
+		return;
+	}
 	int playerIndex;
 	if (isLobby) {
 		//TODO: the nameToPlayerIndexMap is based on in game player indexes
 		//it is not used while in game, so the indexes aren't right
-		h2mod->write_chat_literal(L"Kicking from lobby with player name won't work yet..");
+		h2mod->write_inner_chat_dynamic(L"Kicking from lobby with player name won't work yet..");
 	}
 	else {
 		playerIndex = nameToPlayerIndexMap[playerName];
@@ -56,10 +48,14 @@ void ChatBoxCommands::kick(char* playerName, bool perm) {
 }
 
 void ChatBoxCommands::kick(int playerIndex, bool perm) {
+	if (!isServer) {
+		h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
+		return;
+	}
 	if (isLobby) {
 		//TODO: the nameToPlayerIndexMap is based on in game player indexes
 		//it is not used while in game, so the indexes aren't right
-		h2mod->write_chat_literal(L"Kicking from lobby with player index won't work yet..");
+		h2mod->write_inner_chat_dynamic(L"Kicking from lobby with player index won't work yet..");
 		return;
 	}
 	h2mod->kick_player(playerIndex);
@@ -80,32 +76,46 @@ bool ChatBoxCommands::isNum(char *s) {
 
 void ChatBoxCommands::listBannedPlayers() {
 	if (!isServer) {
-		//TODO:
+		h2mod->write_inner_chat_dynamic(L"listBannedPlayers can only be used on the server");
+		return;
 	}
-	else {
-		TRACE_GAME_N(LIST_BANNED_PLAYERS_VALIDATION_MSG);
-	}
+
+	//TODo: go to ban file
 }
 
 void ChatBoxCommands::listPlayers() {
-	for (int i = 0; i < 16; i++) {
+	if (!isServer) {
+		h2mod->write_chat_literal(L"listPlayers can only be used on the server");
+		return;
+	}
+	//TODO: we have to iterate all 16 player spots, since when people leave a game, other people in game don't occupy their spot
+	for (int i = 0; i < 15; i++) {
 		char gamertag[32];
-		h2mod->get_player_name2(i, gamertag, 32);
+		if (isLobby) {
+			h2mod->get_player_name2(i, gamertag, 32);
+		}
+		else {
+			h2mod->get_player_name(i, gamertag, 32);
+		}
 		if ((gamertag != NULL) && (gamertag[0] >= 0x20 && gamertag[0] <= 0x7E)) {
 			wchar_t* unicodeGamertag = new wchar_t[64];
 			mbstowcs(unicodeGamertag, gamertag, 64);
-			//stripWhitespace(unicodeGamertag);
+
+			const char* hostnameOrIP = inet_ntoa(h2mod->get_player_ip(i));
+			float xPos = h2mod->get_player_x(i);
+			float yPos = h2mod->get_player_y(i);
+			float zPos = h2mod->get_player_z(i);
 
 			std::wstringstream oss;
-			oss << "Player " << i << ":" << unicodeGamertag << "/" << "";
+			oss << "Player " << i << ":" << unicodeGamertag << "/" << hostnameOrIP << "/x=" << xPos << ",y=" << yPos << ",z=" << zPos;
 			std::wstring playerLogLine = oss.str();
-			h2mod->write_chat_dynamic(playerLogLine.c_str());
+			h2mod->write_inner_chat_dynamic(playerLogLine.c_str());
 		}
 	}
 }
 
 void ChatBoxCommands::ban(char* gamertag) {
-	//TODO:
+	kick(gamertag, true);
 }
 
 /*
@@ -120,7 +130,7 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		std::transform(firstCommand.begin(), firstCommand.end(), firstCommand.begin(), ::tolower);
 		if (firstCommand == "$kick") {
 			if (splitCommands.size() != 3) {
-				TRACE_GAME_N(KICK_VALIDATION_MSG);
+				h2mod->write_inner_chat_dynamic(L"Invalid kick command, usage - $kick (GAMERTAG or PLAYER_INDEX) BAN_FLAG(true/false)");
 				return false;
 			}
 			std::string firstArg = splitCommands[1];
@@ -141,7 +151,7 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		}
 		else if (firstCommand == "$ban") {
 			if (splitCommands.size() != 2) {
-				TRACE_GAME_N(BAN_VALIDATION_MSG);
+				h2mod->write_inner_chat_dynamic(L"Invalid ban command, usage - $ban GAMERTAG");
 				return false;
 			}
 			std::string firstArg = splitCommands[1];
@@ -152,7 +162,7 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		}
 		else if (firstCommand == "$mute") {
 			if (splitCommands.size() != 3) {
-				TRACE_GAME_N(MUTE_VALIDATION_MSG);
+				h2mod->write_inner_chat_dynamic(L"Invalid mute command, usage - $mute GAMERTAG BAN_FLAG(true/false)");
 				return false;
 			}
 			std::string firstArg = splitCommands[1];
@@ -168,7 +178,7 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		}
 		else if (firstCommand == "$unmute") {
 			if (splitCommands.size() != 2) {
-				TRACE_GAME_N(UNMUTE_VALIDATION_MSG);
+				h2mod->write_inner_chat_dynamic(L"Invalid mute command, usage - $unmute GAMERTAG");
 				return false;
 			}
 			std::string firstArg = splitCommands[1];
@@ -180,16 +190,20 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 			delete[] cstr;
 		}
 		else if (firstCommand == "$setchatmode") {
-			//TODO:
+			//TODO: use command socket to set chat modes for client
 		}
 		else if (firstCommand == "$listplayers") {
 			if (splitCommands.size() != 1) {
-				TRACE_GAME_N(LIST_PLAYERS_VALIDATION_MSG);
+				h2mod->write_inner_chat_dynamic(L"Invalid listPlayers command, usage - $listPlayers");
 				return false;
 			}
 			listPlayers();
 		}
 		else if (firstCommand == "$listbannedplayers") {
+			if (splitCommands.size() != 1) {
+				h2mod->write_inner_chat_dynamic(L"Invalid listBannedPlayers command, usage - $listBannedPlayers");
+				return false;
+			}
 			listBannedPlayers();
 		}
 

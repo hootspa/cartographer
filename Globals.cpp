@@ -18,7 +18,7 @@ bool isLobby = true;
 
 HANDLE *currentSessionHandle;
 
-CHAT_MODE chatMode = ALL_PLAYERS;
+CLIENT_CHAT_MODE clientChatMode = ALL_PLAYERS;
 
 ChatBoxCommands* commands = new ChatBoxCommands();
 

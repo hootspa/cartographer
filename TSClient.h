@@ -41,6 +41,7 @@ private:
 	void initializeCallbacks(bool log);
 	void setClientVolume(anyID teamspeakClientID, float volume);
 	void printCurrentClientVolume(anyID teamspeakClientID);
+	int getClientVolume(anyID teamspeakClientID);
 	char* programPath(char* programInvocation);
 	static void onUserLoggingMessageEvent(const char* logMessage, int logLevel, const char* logChannel, uint64 logID, const char* logTime, const char* completeLogString);
 	static void onConnectStatusChangeEvent(uint64 serverConnectionHandlerID, int newStatus, unsigned int errorNumber);

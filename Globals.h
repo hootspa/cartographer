@@ -4,11 +4,10 @@
 //TODO: there are 16 colors
 enum COLOR { red, yellow, green, purple, oragne, brown, pink };
 
-//3 different chat modes allowed for each server
-enum CHAT_MODE {
+//3 different chat modes allowed for each client
+enum CLIENT_CHAT_MODE {
 	ALL_PLAYERS,
 	PROXIMITY,
-	TEAM_ONLY,
 	OFF
 };
 
@@ -50,7 +49,7 @@ extern bool microphoneEnabled;
 
 extern bool isLobby;
 
-extern CHAT_MODE chatMode;
+extern CLIENT_CHAT_MODE clientChatMode;
 
 extern ChatBoxCommands* commands;
 

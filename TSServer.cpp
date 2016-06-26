@@ -104,12 +104,22 @@ void TSServer::createVirtualServer() {
 	}
 	/* Set the chanell codec */
 	int channelid = 1;
+	//channel codecs
+	//0 - speex narrowband
+	//1 - speex wideband
+	//2 - speex ultra wideband
+	//3 - celt
+	//4 - opus voice
+	//5 - opus music
+	//TODO: make configurable
 	if ((error = ts3server_setChannelVariableAsInt(serverID, channelid, CHANNEL_CODEC, 0)) != ERROR_ok) {
 		TRACE_GAME_N("Error setting codec: %d", error);
 	}
 
 	/* Lower codec quality */
-	if ((error = ts3server_setChannelVariableAsInt(serverID, channelid, CHANNEL_CODEC_QUALITY, 5)) != ERROR_ok) {
+	//0-10 (default is 7) 10 is best quality
+	//TODO: make configurable
+	if ((error = ts3server_setChannelVariableAsInt(serverID, channelid, CHANNEL_CODEC_QUALITY, 0)) != ERROR_ok) {
 		TRACE_GAME_N("Error changing codec quality: %d", error);
 	}
 

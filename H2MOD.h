@@ -63,34 +63,39 @@ void GivePlayerWeapon(int PlayerIndex, int WeaponId);
 class H2MOD
 {
 public:
-		void Initialize();
-		void EstablishNetwork();
-		int get_unit_from_player_index(int);
-		int get_unit_datum_from_player_index(int);
-		int get_unit_team_index(int);
+	void Initialize();
+	void EstablishNetwork();
+	int get_unit_from_player_index(int);
+	int get_unit_datum_from_player_index(int);
+	int get_unit_team_index(int);
 
 
-		BOOL is_same_team(int p1, int p2);
-		BYTE get_team_id(int playerIndex);
-		void kick_player(int playerIndex);
-		IN_ADDR get_server_address();
-		float get_player_x(int);
-		float get_player_y(int);
-		float get_player_z(int);
-		void get_player_name(int, char*, int);
-		void get_player_name2(int playerIndex, char* buffer, int size);
-		BOOL handle_command(std::string);
-		DWORD get_generated_id(int);
-		XUID get_xuid(int);
-		//int is_server();
-		int write_chat_dynamic(const wchar_t* data);
-		int write_chat_literal(const wchar_t* data);
-		void ApplyHooks();
-		DWORD GetBase();
+	BOOL is_same_team(int p1, int p2);
+	BYTE get_team_id(int playerIndex);
+	void kick_player(int playerIndex);
+	IN_ADDR get_server_address();
+	int get_dynamic_player_base(int playerIndex);
+	int get_player_count();
+	float get_player_x(int);
+	float get_player_y(int);
+	float get_player_z(int);
+	void get_player_name(int, char*, int);
+	void get_player_name2(int playerIndex, char* buffer, int size);
+	IN_ADDR get_player_ip(int playerIndex);
+	BOOL handle_command(std::string);
+	DWORD get_generated_id(int);
+	XUID get_xuid(int);
+	//int is_server();
+	void write_inner_chat_dynamic(const wchar_t* data);
+	int write_chat_dynamic(const wchar_t* data);
+	int write_chat_literal(const wchar_t* data);
+	void ApplyHooks();
+	DWORD GetBase();
 		
-		BOOL Server;
+	BOOL Server;
 private:
-		DWORD Base;
+	std::unordered_map<int, int> playerIndexToDynamicBase;
+	DWORD Base;
 };
 
 

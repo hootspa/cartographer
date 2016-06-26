@@ -158,6 +158,19 @@ void H2MOD::get_player_name2(int playerIndex, char* buffer, int size) {
 	wcstombs(buffer, _buffer, size);
 }
 
+IN_ADDR H2MOD::get_player_ip(int playerIndex) {
+	//only server should ask for ip's
+	int offset = 0x5057A8;
+
+	BYTE* ipPtr = (BYTE*)(this->GetBase() + offset + (0x10c * playerIndex));
+	IN_ADDR playerAddr = {};
+	playerAddr.S_un.S_un_b.s_b1 = ipPtr[0];
+	playerAddr.S_un.S_un_b.s_b2 = ipPtr[1];
+	playerAddr.S_un.S_un_b.s_b3 = ipPtr[2];
+	playerAddr.S_un.S_un_b.s_b4 = ipPtr[3];
+	return playerAddr;
+}
+
 DWORD H2MOD::get_generated_id(int playerIndex) {
 	//get the starting address for the first player xuid
 	//case address to a unsigned long* (DWORD), then dereference it, so we get the current address
@@ -167,18 +180,60 @@ DWORD H2MOD::get_generated_id(int playerIndex) {
 	//return (*(DWORD*)player_table_ptr);
 }
 
+int H2MOD::get_dynamic_player_base(int playerIndex) {
+	int tempSight = get_unit_datum_from_player_index(playerIndex);
+	int dynamicBase = playerIndexToDynamicBase[playerIndex];
+	if (tempSight != -1 && tempSight != 0 && dynamicBase <= 0) {
+		//TODo: this is based on some weird implementation in HaloObjects.cs, need just to find real offsets to dynamic player pointer
+		//instead of this garbage
+		for (int i = 0; i < 2048; i++) {
+			int dynamicBase2 = *(DWORD*)(0x3003CF3C + (i * 12) + 8);
+			DWORD* possiblyDynamicBasePtr = (DWORD*)(dynamicBase2 + 0x3F8);
+			if (possiblyDynamicBasePtr) {
+				//TODo: this sometimes fails, cause this whole impl is garbage
+				try {
+					int dynamicS = *possiblyDynamicBasePtr;
+					if (tempSight == dynamicS) {
+						return dynamicBase2;
+						//playerIndexToDynamicBase[playerIndex] = dynamicBase;
+						break;
+					}
+				}
+				catch (...) {
+					TRACE_GAME_N("Exception occured trying to read player dynamic base at index %d", i);
+					continue;
+				}
+			}
+		}
+	}
+	return -1;
+}
+
+int H2MOD::get_player_count() {
+	return *((int*)(0x30004B60));
+}
+
 float H2MOD::get_player_x(int playerIndex) {
-	//halo2.exe+4C072C
+	int base = get_dynamic_player_base(playerIndex);
+	if (base != -1) {
+		return *(float*)(base + 0x64);
+	}
 	return 0.0f;
 }
 
 float H2MOD::get_player_y(int playerIndex) {
-	//halo2.exe+4C0728
+	int base = get_dynamic_player_base(playerIndex);
+	if (base != -1) {
+		return *(float*)(base + 0x68);
+	}
 	return 0.0f;
 }
 
 float H2MOD::get_player_z(int playerIndex) {
-	//halo2.exe+4C0730
+	int base = get_dynamic_player_base(playerIndex);
+	if (base != -1) {
+		return *(float*)(base + 0x6C);
+	}
 	return 0.0f;
 }
 
@@ -264,6 +319,43 @@ void H2MOD::kick_player(int playerIndex) {
 	calls_session_boot_method((DWORD*)(*ptr), playerIndex, (char)0x01);
 }
 
+//0x8F524
+typedef int(__cdecl *free_halo_string)(LPVOID lpMem);
+free_halo_string free_halo_string_method = (free_halo_string)(h2mod->GetBase() + 0x8F524);
+
+typedef int(__cdecl *write_inner_chat_text)(int a1, unsigned int a2, int a3);
+write_inner_chat_text write_inner_chat_text_method;
+
+int __cdecl write_inner_chat_hook(int a1, unsigned int a2, int a3) {
+	return write_inner_chat_text_method(a1, a2, a3);
+}
+
+//can write literal and dynamic wchar_t's
+void H2MOD::write_inner_chat_dynamic(const wchar_t* data) {
+	DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x00973ac8);
+
+	int a3 = (int)&(*data);
+	void* v5 = ptr;
+	const unsigned __int16* v3 = (const unsigned __int16*)(a3 - 20);
+	int v8 = *(DWORD*)v5;
+	*((BYTE*)v5 + 7684) = 1;
+	*((DWORD*)v5 + 2) = v8;
+	int v10 = *(DWORD*)v5;
+	int v11 = (*(DWORD*)v5)++ % 30;
+	int v12 = v10 % 30;
+
+	if (*((DWORD *)v5 + v10 % 30 + 4)) {
+		free_halo_string_method(*((LPVOID *)v5 + v11 + 4));
+	}
+	//size in bytes
+	unsigned int v13 = wcslen(data) + 256;
+	LPVOID v14 = HeapAlloc(GetProcessHeap(), 0, 2 * v13);
+	*((DWORD *)v5 + v12 + 4) = (DWORD)v14;
+
+	//where the string is located
+	int result = write_inner_chat_text_method(*((DWORD *)v5 + v12 + 4), v13, a3);
+}
+
 //sub_1458759
 typedef int(__stdcall *write_chat_text)(void*, int);
 write_chat_text write_chat_text_method;
@@ -275,6 +367,9 @@ int __stdcall write_chat_hook(void* pObject, int a2) {
   v5 = sub_142B37B(); //can use this to get the this* object we need to even utilize write_chat_text_method
   return sub_1458759(v5, (int)&v7);             // this method that gets invoked here has logic in that that appends the GamerTag : or Server : to the chatbox line
 	*/
+
+	//to get the current clients name, call sub_11B57CA(*(_DWORD *)(v2 + 8)); replace v2 with a2
+	//which is at method offset 0x2157CA
 
 	wchar_t* chatStringWChar = (wchar_t*)(a2 + 20);
 	char chatStringChar[119];
@@ -540,6 +635,84 @@ void H2MOD::EstablishNetwork()
 
 */
 
+//0xD114C
+typedef bool(__thiscall *can_join)(int thisx);
+
+//0xD1F47
+typedef bool(__thiscall *something_with_player_reservation)(int thisx, int a2);
+
+//0xD1FA7
+typedef void(__thiscall *data_decode_string)(void* thisx, int a2, int a3, int a4);
+
+//0xD1FFD
+typedef int(__thiscall *data_decode_address)(int thisx, int a1, int a2);
+data_decode_address data_decode_address_method;
+
+//0xD1F95
+typedef int(__thiscall *data_decode_id)(int thisx, int a1, int a2, int a3);
+data_decode_id data_decode_id_method;
+
+//0xD1EE5
+typedef unsigned int(__thiscall *data_decode_integer)(int thisx, int a1, int a2);
+data_decode_integer data_decode_integer_method;
+
+//0x1F0CFC
+typedef bool(__cdecl *tjoin_request_read)(int a1, int a2, int a3);
+tjoin_request_read tjoin_request_read_method;
+
+bool __cdecl joinRequestRead(int a1, int a2, int a3) {
+	data_decode_integer dataDecodeInteger = (data_decode_integer)(h2mod->GetBase() + 0xD1EE5);
+	data_decode_id dataDecodeId = (data_decode_id)(h2mod->GetBase() + 0xD1F95);
+	data_decode_address dataDecodeAddress = (data_decode_address)(h2mod->GetBase() + 0xD1FFD);
+	data_decode_string dataDecodeString = (data_decode_string)(h2mod->GetBase() + 0xD1F95);
+	something_with_player_reservation sub_451F47_method = (something_with_player_reservation)(h2mod->GetBase() + 0xD1F47);
+	can_join sub_45114C_method = (can_join)(h2mod->GetBase() + 0xD114C);
+
+	int v3;
+	unsigned int v4;
+	int v5;
+	int v6;
+	char v7;
+	int v9;
+	int v10;
+
+	v3 = a3;
+	*(WORD*)a3 = dataDecodeInteger(a1, (int)"protocol", 16);
+	dataDecodeId(a1, (int)"session-id", a3 + 4, 64);
+	dataDecodeId(a1, (int)"join-nonce", a3 + 1312, 64);
+	dataDecodeId(a1, (int)"party-nonce", a3 + 1296, 64);
+	//TODO: check if machine address is banned
+	dataDecodeAddress(a1, (int)"machine-address", a3 + 1320);
+	v4 = dataDecodeInteger(a1, (int)"joining-player-count", 5);
+	v5 = 0;
+
+	*(DWORD*)(a3 + 12) = v4;
+	if ((signed int)v4 > 0) {
+		v6 = a3 + 1232;
+		v9 = a3 + 144;
+		v10 = a3 + 16;
+
+		do {
+			//TODO: assuming this is xuid or some other id, check if this id is banned
+			dataDecodeId(a1, (int)"joining-player-id", v10, 64);
+			//TODO: check if joining player name is a banned player
+			dataDecodeString((void*)a1, (int)"joining-player-name", v9, 32);
+
+			*(DWORD*)(v6 - 64) = dataDecodeInteger(a1, (int)"joining-player-skill-level", 8) - 1;
+			v10 += 8;
+			v9 += 64;
+			*(DWORD*)v6 = dataDecodeInteger(a1, (int)"joining-player-experience", 31) - 1;
+			++v5;
+			v6 += 4;
+		} while (v5 < *(DWORD*)(v3 + 12));
+	}
+	v7 = sub_451F47_method(a1, (int)"create-player-reservations");
+	*(BYTE*)(v3 + 1305) = v7;
+	if (v7)
+		dataDecodeId(a1, (int)"player-reservation-timeout-msec", v3 + 1308, 32);
+	return !(unsigned __int8)sub_45114C_method(a1) && *(DWORD*)(v3 + 12) >= 0;
+}
+
 typedef void(__stdcall *tjoin_game)(void* thisptr, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9, int a10, int a11, char a12, int a13, int a14);
 tjoin_game pjoin_game;
 
@@ -613,7 +786,6 @@ void H2MOD::ApplyHooks()
 
 		pmap_initialize = (map_intialize)DetourFunc((BYTE*)this->GetBase() + 0x5912D, (BYTE*)OnMapLoad, 10);
 		VirtualProtect(pmap_initialize, 4, PAGE_EXECUTE_READWRITE, &dwBack);
-
 		
 		pupdate_player_score = (update_player_score)DetourClassFunc((BYTE*)this->GetBase() + 0xD03ED, (BYTE*)OnPlayerScore,12);
 		VirtualProtect(pupdate_player_score, 4, PAGE_EXECUTE_READWRITE, &dwBack);
@@ -624,7 +796,7 @@ void H2MOD::ApplyHooks()
 		pconnect_establish_write = (tconnect_establish_write)DetourFunc((BYTE*)this->GetBase() + 0x1F1A2D, (BYTE*)connect_establish_write, 5);
 		VirtualProtect(pconnect_establish_write, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-    		//lobby chatbox
+    //lobby chatbox
 		write_chat_text_method = (write_chat_text)DetourClassFunc((BYTE*)this->GetBase() + 0x238759, (BYTE*)write_chat_hook, 8);
 		VirtualProtect(write_chat_text_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
@@ -632,12 +804,17 @@ void H2MOD::ApplyHooks()
 		pjoin_game = (tjoin_game)DetourClassFunc((BYTE*)this->GetBase() + 0x1CDADE, (BYTE*)join_game, 13);
 		VirtualProtect(pjoin_game, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		//0x1CCE9B
+		//join request
+		tjoin_request_read_method = (tjoin_request_read)DetourFunc((BYTE*)this->GetBase() + 0x1F0CFC, (BYTE*)joinRequestRead, 7);
+		VirtualProtect(tjoin_request_read_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		//boot method
 		calls_session_boot_method = (calls_session_boot)DetourClassFunc((BYTE*)this->GetBase() + 0x1CCE9B, (BYTE*)calls_session_boot_sub_1cce9b, 8);
 		VirtualProtect(calls_session_boot_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		//is_host_method = (is_host)DetourClassFunc((BYTE*)this->GetBase() + 0x211973, (BYTE*)is_host_hook, 10);
-		//VirtualProtect(is_host_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		//raw log line (without Server: or GAMER_TAG: prefix)
+		write_inner_chat_text_method = (write_inner_chat_text)DetourFunc((BYTE*)this->GetBase() + 0x287669, (BYTE*)write_inner_chat_hook, 8);
+		VirtualProtect(write_inner_chat_text_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 	}
 	
 
