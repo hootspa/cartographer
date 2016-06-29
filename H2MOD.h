@@ -82,7 +82,7 @@ public:
 	void get_player_name(int, char*, int);
 	void get_player_name2(int playerIndex, char* buffer, int size);
 	IN_ADDR get_player_ip(int playerIndex);
-	BOOL handle_command(std::string);
+	void handle_command(std::string);
 	DWORD get_generated_id(int);
 	XUID get_xuid(int);
 	//int is_server();

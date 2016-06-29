@@ -376,15 +376,18 @@ int __stdcall write_chat_hook(void* pObject, int a2) {
 	wcstombs(chatStringChar, chatStringWChar, 119);
 	TRACE_GAME_N("chat_string=%s", chatStringChar);
 	std::string str(chatStringChar);
-	if (!h2mod->handle_command(str)) {
-		//if we couldn't handle the command, just print the output like regular old text
+	char c = str.c_str()[0];
+	if (c == '$') {
+		//if this is a command, treat it differently
+		h2mod->handle_command(str);
+		return 0;
+	}	else {
 		return write_chat_text_method(pObject, a2);
 	}
-	return 0;
 }
 
-BOOL H2MOD::handle_command(std::string command) {
-	return commands->handle_command(command);
+void H2MOD::handle_command(std::string command) {
+	commands->handle_command(command);
 }
 
 int H2MOD::write_chat_dynamic(const wchar_t* data) {

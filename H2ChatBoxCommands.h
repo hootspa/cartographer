@@ -13,7 +13,7 @@ public:
 	void kick(char*, bool);
 	void kick(int, bool);
 	void setChatMode(CLIENT_CHAT_MODE);
-	BOOL handle_command(std::string);
+	void handle_command(std::string);
 private:
 	bool ChatBoxCommands::isNum(char *s);
 

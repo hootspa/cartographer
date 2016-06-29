@@ -25,39 +25,17 @@ void ChatBoxCommands::setChatMode(CLIENT_CHAT_MODE mode) {
 }
 
 void ChatBoxCommands::kick(char* playerName, bool perm) {
-	if (!isServer) {
-		h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
-		return;
-	}
-	int playerIndex;
-	if (isLobby) {
-		//TODO: the nameToPlayerIndexMap is based on in game player indexes
-		//it is not used while in game, so the indexes aren't right
-		h2mod->write_inner_chat_dynamic(L"Kicking from lobby with player name won't work yet..");
-	}
-	else {
-		playerIndex = nameToPlayerIndexMap[playerName];
-		for (auto it = nameToPlayerIndexMap.begin(); it != nameToPlayerIndexMap.end(); ++it) {
-			char* name = it->first;
-			int index = it->second;
+	int playerIndex = nameToPlayerIndexMap[playerName];
+	for (auto it = nameToPlayerIndexMap.begin(); it != nameToPlayerIndexMap.end(); ++it) {
+		char* name = it->first;
+		int index = it->second;
 
-			TRACE_GAME_N("PlayerMap-PlayerName=%s, PlayerIndex=%d", name, index);
-		}
-		this->kick(nameToPlayerIndexMap[playerName], perm);
+		TRACE_GAME_N("PlayerMap-PlayerName=%s, PlayerIndex=%d", name, index);
 	}
+	this->kick(nameToPlayerIndexMap[playerName], perm);
 }
 
 void ChatBoxCommands::kick(int playerIndex, bool perm) {
-	if (!isServer) {
-		h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
-		return;
-	}
-	if (isLobby) {
-		//TODO: the nameToPlayerIndexMap is based on in game player indexes
-		//it is not used while in game, so the indexes aren't right
-		h2mod->write_inner_chat_dynamic(L"Kicking from lobby with player index won't work yet..");
-		return;
-	}
 	h2mod->kick_player(playerIndex);
 	//TODO: write to file for permnanent bans
 }
@@ -75,19 +53,10 @@ bool ChatBoxCommands::isNum(char *s) {
 }
 
 void ChatBoxCommands::listBannedPlayers() {
-	if (!isServer) {
-		h2mod->write_inner_chat_dynamic(L"listBannedPlayers can only be used on the server");
-		return;
-	}
-
 	//TODo: go to ban file
 }
 
 void ChatBoxCommands::listPlayers() {
-	if (!isServer) {
-		h2mod->write_chat_literal(L"listPlayers can only be used on the server");
-		return;
-	}
 	//TODO: we have to iterate all 16 player spots, since when people leave a game, other people in game don't occupy their spot
 	for (int i = 0; i < 15; i++) {
 		char gamertag[32];
@@ -122,7 +91,7 @@ void ChatBoxCommands::ban(char* gamertag) {
 * Handles the given string command
 * Returns a bool indicating whether the command is a valid command or not
 */
-BOOL ChatBoxCommands::handle_command(std::string command) {
+void ChatBoxCommands::handle_command(std::string command) {
 	//split by a space
 	std::vector<std::string> splitCommands = split(command, ' ');
 	if (splitCommands.size() != 0) {
@@ -131,7 +100,7 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		if (firstCommand == "$kick") {
 			if (splitCommands.size() != 3) {
 				h2mod->write_inner_chat_dynamic(L"Invalid kick command, usage - $kick (GAMERTAG or PLAYER_INDEX) BAN_FLAG(true/false)");
-				return false;
+				return;
 			}
 			std::string firstArg = splitCommands[1];
 			char *cstr = new char[firstArg.length() + 1];
@@ -139,6 +108,18 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 
 			std::string secondArg = splitCommands[2];
 			bool ban = secondArg == "true" ? true : false;
+
+			if (!isServer) {
+				h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
+				return;
+			}
+
+			if (isLobby) {
+				//TODO: the nameToPlayerIndexMap is based on in game player indexes
+				//it is not used while in game, so the indexes aren't right
+				h2mod->write_inner_chat_dynamic(L"Kicking from lobby with player index or name won't work yet..");
+				return;
+			}
 
 			if (isNum(cstr)) {
 				kick(atoi(cstr), ban);
@@ -152,18 +133,29 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		else if (firstCommand == "$ban") {
 			if (splitCommands.size() != 2) {
 				h2mod->write_inner_chat_dynamic(L"Invalid ban command, usage - $ban GAMERTAG");
-				return false;
+				return;
 			}
 			std::string firstArg = splitCommands[1];
 			char *cstr = new char[firstArg.length() + 1];
 			strcpy(cstr, firstArg.c_str());
 
+			if (!isServer) {
+				h2mod->write_inner_chat_dynamic(L"Only the server can ban players");
+				return;
+			}
+
+			if (isLobby) {
+				//TODO: the nameToPlayerIndexMap is based on in game player indexes
+				//it is not used while in game, so the indexes aren't right
+				h2mod->write_inner_chat_dynamic(L"Banning from lobby with player index or name won't work yet..");
+				return;
+			}
 			ban(cstr);
 		}
 		else if (firstCommand == "$mute") {
 			if (splitCommands.size() != 3) {
 				h2mod->write_inner_chat_dynamic(L"Invalid mute command, usage - $mute GAMERTAG BAN_FLAG(true/false)");
-				return false;
+				return;
 			}
 			std::string firstArg = splitCommands[1];
 			char *cstr = new char[firstArg.length() + 1];
@@ -179,7 +171,7 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		else if (firstCommand == "$unmute") {
 			if (splitCommands.size() != 2) {
 				h2mod->write_inner_chat_dynamic(L"Invalid mute command, usage - $unmute GAMERTAG");
-				return false;
+				return;
 			}
 			std::string firstArg = splitCommands[1];
 			char *cstr = new char[firstArg.length() + 1];
@@ -195,24 +187,24 @@ BOOL ChatBoxCommands::handle_command(std::string command) {
 		else if (firstCommand == "$listplayers") {
 			if (splitCommands.size() != 1) {
 				h2mod->write_inner_chat_dynamic(L"Invalid listPlayers command, usage - $listPlayers");
-				return false;
+				return;
+			}
+			if (!isServer) {
+				h2mod->write_inner_chat_dynamic(L"listPlayers can only be used on the server");
+				return;
 			}
 			listPlayers();
 		}
 		else if (firstCommand == "$listbannedplayers") {
 			if (splitCommands.size() != 1) {
 				h2mod->write_inner_chat_dynamic(L"Invalid listBannedPlayers command, usage - $listBannedPlayers");
-				return false;
+				return;
+			}
+			if (!isServer) {
+				h2mod->write_inner_chat_dynamic(L"listBannedPlayers can only be used on the server");
+				return;
 			}
 			listBannedPlayers();
 		}
-
-		char c = firstCommand.c_str()[0];
-		if (c == '$') {
-			//if we made it here, we passed any/all validation and executed the command
-			return true;
-		}
 	}
-
-	return false;
 }
