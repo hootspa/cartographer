@@ -5,8 +5,8 @@
 
 #include "Globals.h"
 
-const float TSClient::MAX_CLIENT_VOLUME_MODIFIER = 20.0f;
-const float TSClient::MIN_CLIENT_VOLUME_MODIFIER = -60.0f;
+const float TSClient::MAX_CLIENT_VOLUME_MODIFIER = 0.0f;
+const float TSClient::MIN_CLIENT_VOLUME_MODIFIER = -30.0f;
 
 TSClient::TSClient(bool log) {
 	TRACE("Client started");
@@ -51,14 +51,15 @@ void TSClient::initializeCallbacks(bool log) {
 	funcs.onTalkStatusChangeEvent = onTalkStatusChangeEvent;
 	funcs.onServerErrorEvent = onServerErrorEvent;
 	funcs.onUserLoggingMessageEvent = onUserLoggingMessageEvent;
-	
+
 	//soundbackends better be in your /halo2 directory
 	path = programPath("soundbackends");
 	int logTypes;
 
 	if (log) {
 		logTypes = LogType_FILE | LogType_CONSOLE | LogType_USERLOGGING;
-	}	else {
+	}
+	else {
 		logTypes = LogType_NONE;
 	}
 	error = ts3client_initClientLib(&funcs, NULL, logTypes, NULL, path);
@@ -92,6 +93,7 @@ void TSClient::connect() {
 
 	this->openMicrophone();
 	this->openPlayback();
+	this->setVoiceActivationLevel(-25.0f);
 
 	char *version;
 	const char* hostnameOrIP = inet_ntoa(serverAddress);
@@ -120,7 +122,7 @@ void TSClient::openPlayback() {
 	if ((error = ts3client_openPlaybackDevice(scHandlerID, "", NULL)) != ERROR_ok) {
 		TRACE("Error opening playback device: %d\n", error);
 	}
-	if ((error = ts3client_setPlaybackConfigValue(scHandlerID, "volume_modifier", "20")) != ERROR_ok) {
+	if ((error = ts3client_setPlaybackConfigValue(scHandlerID, "volume_modifier", "20.0")) != ERROR_ok) {
 		TRACE("Error setting playback config value: %d\n", error);
 	}
 }
@@ -138,7 +140,8 @@ void TSClient::disconnect() {
 	/* Disconnect from server */
 	if ((error = ts3client_stopConnection(scHandlerID, "leaving")) != ERROR_ok) {
 		TRACE("Error stopping connection: %d\n", error);
-	}	else {
+	}
+	else {
 		TRACE_GAME_N("Client disconnecting from the server %s", inet_ntoa(serverAddress));
 	}
 
@@ -199,9 +202,9 @@ void TSClient::onClientMoveTimeoutEvent(uint64 serverConnectionHandlerID, anyID 
 	TRACE_GAME_N("ClientID %u timeouts with message %s", clientID, timeoutMessage);
 }
 
-/* 
- * Prints the current client volume 
- */
+/*
+* Prints the current client volume
+*/
 void TSClient::printCurrentClientVolume(anyID teamspeakClientID) {
 	int volume;
 	if (ts3client_getClientVariableAsInt(scHandlerID, teamspeakClientID, CLIENT_VOLUME_MODIFICATOR, &volume)) {
@@ -224,12 +227,27 @@ int TSClient::getClientVolume(anyID teamspeakClientID) {
 }
 
 /*
- * Sets the volume for the given client id
- */
+* Sets the volume for the given client id
+*/
 void TSClient::setClientVolume(anyID teamspeakClientID, float volume) {
 	int error;
 	if ((error = ts3client_setClientVolumeModifier(scHandlerID, teamspeakClientID, volume)) != ERROR_ok) {
-		TRACE("error turning off client volume: %d\n", error);
+		TRACE("error modifying client volume: %d\n", error);
+	}
+}
+
+/*
+* Sets how close you need to be to your mic for teamspeak to recognize you are talking
+*/
+void TSClient::setVoiceActivationLevel(float activationLevel) {
+	int error;
+
+	std::ostringstream ss;
+	ss << activationLevel;
+	std::string s(ss.str());
+
+	if (error = ts3client_setPreProcessorConfigValue(scHandlerID, "voiceactivation_level", s.c_str()) != ERROR_ok) {
+		TRACE("Error setting voice activation level: %d\n", error);
 	}
 }
 
@@ -249,6 +267,9 @@ anyID TSClient::getClientId(char* name) {
 				if (ts3client_getClientVariableAsString(scHandlerID, clientID, CLIENT_NICKNAME, &clientName) != ERROR_ok) {
 					TRACE("error trying to client name for mute");
 				}
+				else {
+					this->nameToTeamSpeakClientIdMap[clientName] = clientID;
+				}
 			}
 		}
 		ts3client_freeMemory(currentClients);
@@ -257,8 +278,8 @@ anyID TSClient::getClientId(char* name) {
 }
 
 /*
- * Mutes the ts client associated with the given name
- */
+* Mutes the ts client associated with the given name
+*/
 void TSClient::mute(char* name, bool permanent) {
 	int error;
 	anyID clientsToMute[1];
@@ -273,9 +294,18 @@ void TSClient::mute(char* name, bool permanent) {
 	}
 }
 
+void TSClient::mute(anyID clientToMute) {
+	int error;
+	anyID clientsToMute[1];
+	clientsToMute[0] = clientToMute;
+	if ((error = ts3client_requestMuteClients(scHandlerID, clientsToMute, NULL)) != ERROR_ok) {
+		TRACE("error turning muting clients: %d\n", error);
+	}
+}
+
 /*
- * Unmutes the ts client associated with the given name
- */
+* Unmutes the ts client associated with the given name
+*/
 void TSClient::unmute(char* name) {
 	int error;
 	anyID clientsToUnmute[1];
@@ -285,6 +315,15 @@ void TSClient::unmute(char* name) {
 	}
 
 	//TODO: check if they were permanently banned and remove their entry from the file
+}
+
+void TSClient::unmute(anyID clientToUnmute) {
+	int error;
+	anyID clientsToUnmute[1];
+	clientsToUnmute[0] = clientToUnmute;
+	if ((error = ts3client_requestUnmuteClients(scHandlerID, clientsToUnmute, NULL)) != ERROR_ok) {
+		TRACE("error turning unmuting clients: %d\n", error);
+	}
 }
 
 /*
@@ -297,16 +336,16 @@ void TSClient::unmute(char* name) {
 *   clientID                  - ID of the client who announced the talk status change
 */
 void TSClient::onTalkStatusChangeEvent(uint64 serverConnectionHandlerID, int status, int isReceivedWhisper, anyID teamspeakClientID) {
-	char* name;
-	/* Query client nickname from ID */
-	if (ts3client_getClientVariableAsString(serverConnectionHandlerID, teamspeakClientID, CLIENT_NICKNAME, &name) != ERROR_ok)
+	char* remoteName;
+	/* Query remote nickname from ID */
+	if (ts3client_getClientVariableAsString(serverConnectionHandlerID, teamspeakClientID, CLIENT_NICKNAME, &remoteName) != ERROR_ok)
 		return;
 
-	XUID remoteId = _atoi64(name);
+	XUID remoteId = _atoi64(remoteName);
 	XUID clientId = _atoi64(client->nickname);
 	if (status == STATUS_TALKING) {
-		client->nameToTeamSpeakClientIdMap[name] = teamspeakClientID;
-		TRACE_GAME_N("Client \"%s\" starts talking.", name);
+		client->nameToTeamSpeakClientIdMap[remoteName] = teamspeakClientID;
+		TRACE_GAME_N("Client \"%s\" starts talking.", remoteName);
 
 		client->printCurrentClientVolume(teamspeakClientID);
 		if (isLobby) {
@@ -325,47 +364,75 @@ void TSClient::onTalkStatusChangeEvent(uint64 serverConnectionHandlerID, int sta
 			BYTE clientPlayerTeamIndex = h2mod->get_team_id(clientPlayerIndex);
 			TRACE("Client-%d clientPlayerTeamIndex:%u, xuid:%llu", clientPlayerIndex, clientPlayerTeamIndex, clientId);
 			if (clientChatMode == PROXIMITY) {
-				//client only chat mode (can hear everyone based on distance)
-				if (!isLobby) {
-					//TODO: mute based on distance
-					float remoteX, remoteY, remoteZ;
-					float clientX, clientY, clientZ;
+				//client only chat mode (can hear everyone based on distance and whether they are on the same team or not)
+				if (remotePlayerTeamIndex != clientPlayerTeamIndex) {
+					float distance = h2mod->get_distance(remotePlayerIndex, clientPlayerIndex);
 
-					remoteX = h2mod->get_player_x(remotePlayerIndex);
-					remoteY = h2mod->get_player_y(remotePlayerIndex);
-					remoteZ = h2mod->get_player_z(remotePlayerIndex);
+					float MAX = 10.0f;
+					if (distance >= MAX) {
+						//if the distance is greater than 50 units, mute
+						client->mute(remoteId);
+						tsUsers->userStoppedTalking(remoteId);
+					}
+					else {
+						//if they are within 10 units, apply ghetto distance to volume calculation
+						client->unmute(remoteId);
+						//start with faintest client volume modifier
+						float volume = MIN_CLIENT_VOLUME_MODIFIER;
+						if (distance >= 9.0f && distance < MAX) {
+							volume = -25.0f;
+						}
+						else if (distance >= 7.0f && distance < 8.0f) {
+							volume = -20.0f;
+						}
+						else if (distance >= 5.0f && distance < 6.0f) {
+							volume = -15.0f;
+						}
+						else if (distance >= 3.0f && distance < 4.0f) {
+							volume = -10.0f;
+						}
+						else if (distance >= 2.0f && distance < 3.0f) {
+							volume = -5.0f;
+						}
+						else if (distance < 1.0f) {
+							volume = 0.0f;
+						}
 
-					clientX = h2mod->get_player_x(clientPlayerIndex);
-					clientY = h2mod->get_player_y(clientPlayerIndex);
-					clientZ = h2mod->get_player_z(clientPlayerIndex);
-
-					double distance = abs(sqrt((pow((clientX - remoteX), 2)) + (pow((clientY - remoteY), 2) + (pow((clientZ - remoteZ), 2)))));
-
-					//TODO: clip distance into a range between max/min client volume
+						TRACE_GAME_N("Set client %s volume to %d", remoteName, volume);
+						client->setClientVolume(teamspeakClientID, volume);
+						tsUsers->userStartedTalking(remoteId);
+						client->printCurrentClientVolume(teamspeakClientID);
+					}
 				}
 				else {
-					//in the lobby we hear everyone
+					//same team hears each other all the time
 					client->setClientVolume(teamspeakClientID, MAX_CLIENT_VOLUME_MODIFIER);
 					tsUsers->userStartedTalking(remoteId);
 				}
 			}
 			else if (clientChatMode == ALL_PLAYERS) {
-				//hear everybody all the time
-				client->setClientVolume(teamspeakClientID, MAX_CLIENT_VOLUME_MODIFIER);
-				tsUsers->userStartedTalking(remoteId);
+				if (remotePlayerTeamIndex != clientPlayerTeamIndex) {
+					//mute ppl on different team
+					client->mute(remoteId);
+				}
+				else {
+					//unmute ppl on same team
+					client->unmute(remoteId);
+					client->setClientVolume(teamspeakClientID, MAX_CLIENT_VOLUME_MODIFIER);
+					tsUsers->userStartedTalking(remoteId);
+				}
 			}
 			else if (clientChatMode == OFF) {
-				//don't listen to anyone
-				client->setClientVolume(teamspeakClientID, MIN_CLIENT_VOLUME_MODIFIER);
-				tsUsers->userStartedTalking(remoteId);
+				client->mute(remoteId);
+				tsUsers->userStoppedTalking(remoteId);
 			}
 		}
 	}
 	else {
-		TRACE_GAME_N("Client \"%s\" stops talking.", name);
+		TRACE_GAME_N("Client \"%s\" stops talking.", remoteName);
 		tsUsers->userStoppedTalking(remoteId);
 	}
-	ts3client_freeMemory(name);  /* Release dynamically allocated memory only if function succeeded */
+	ts3client_freeMemory(remoteName);  /* Release dynamically allocated memory only if function succeeded */
 }
 
 void TSClient::onServerErrorEvent(uint64 serverConnectionHandlerID, const char* errorMessage, unsigned int error, const char* returnCode, const char* extraMessage) {

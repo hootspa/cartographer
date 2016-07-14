@@ -27,6 +27,7 @@ enum CLIENT_CHAT_MODE {
 #include "TSClient.h"
 #include "TSServer.h"
 #include "H2ChatBoxCommands.h"
+#include "H2Ban.h"
 
 
 extern TSUsers* tsUsers;

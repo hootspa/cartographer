@@ -12,7 +12,12 @@ void ChatBoxCommands::mute(char* name, bool ban) {
 	}
 }
 
-void ChatBoxCommands::unmute(char* name) {
+
+void ChatBoxCommands::setVoiceActivationLevel(float activationLevel) {
+	if (!isServer) {
+		client->setVoiceActivationLevel(activationLevel);
+	}
+}void ChatBoxCommands::unmute(char* name) {
 	//TODO: unmute for server (if possible)
 	if (!isServer) {
 		client->unmute(name);
@@ -40,7 +45,7 @@ void ChatBoxCommands::kick(int playerIndex, bool perm) {
 	//TODO: write to file for permnanent bans
 }
 
-bool ChatBoxCommands::isNum(char *s) {
+bool ChatBoxCommands::isNum(const char *s) {
 	int i = 0;
 	while (s[i]) {
 		//if there is a letter in a string then string is not a number
@@ -52,11 +57,27 @@ bool ChatBoxCommands::isNum(char *s) {
 	return true;
 }
 
+
+/*
+void ChatBoxCommands::listBannedXuids() {
+	//TODo: go to ban file
+}
+
+void ChatBoxCommands::listBannedIps() {
+	//TODo: go to ban file
+}
+*/
 void ChatBoxCommands::listBannedPlayers() {
 	//TODo: go to ban file
 }
 
-void ChatBoxCommands::listPlayers() {
+
+void ChatBoxCommands::printDistance(int player1, int player2) {
+	float distance = h2mod->get_distance(player1, player2);
+	std::wstringstream oss;
+	oss << "Distance from player index " << player1 << " to player index " << player2 << " is " << distance << " units";
+	h2mod->write_inner_chat_dynamic(oss.str().c_str());
+}void ChatBoxCommands::listPlayers() {
 	//TODO: we have to iterate all 16 player spots, since when people leave a game, other people in game don't occupy their spot
 	for (int i = 0; i < 15; i++) {
 		char gamertag[32];
@@ -71,9 +92,14 @@ void ChatBoxCommands::listPlayers() {
 			mbstowcs(unicodeGamertag, gamertag, 64);
 
 			const char* hostnameOrIP = inet_ntoa(h2mod->get_player_ip(i));
-			float xPos = h2mod->get_player_x(i);
-			float yPos = h2mod->get_player_y(i);
-			float zPos = h2mod->get_player_z(i);
+
+			bool resetDynamicBase = false;
+			if (i != nameToPlayerIndexMap[gamertag]) {
+				resetDynamicBase = true;
+			}
+			float xPos = h2mod->get_player_x(i, resetDynamicBase);
+			float yPos = h2mod->get_player_y(i, resetDynamicBase);
+			float zPos = h2mod->get_player_z(i, resetDynamicBase);
 
 			std::wstringstream oss;
 			oss << "Player " << i << ":" << unicodeGamertag << "/" << hostnameOrIP << "/x=" << xPos << ",y=" << yPos << ",z=" << zPos;
@@ -84,8 +110,15 @@ void ChatBoxCommands::listPlayers() {
 }
 
 void ChatBoxCommands::ban(char* gamertag) {
+	//first kick the player from the game
 	kick(gamertag, true);
-}
+
+	int playerIndex = nameToPlayerIndexMap[gamertag];
+	IN_ADDR playerIp = h2mod->get_player_ip(playerIndex);
+	XUID playerXuid = nameToXuidIndexMap[gamertag];
+
+	//then ban the player based on all the unique properties of the player
+	BanUtility::banPlayer(gamertag, playerIp, playerXuid);}
 
 /*
 * Handles the given string command
@@ -129,8 +162,7 @@ void ChatBoxCommands::handle_command(std::string command) {
 			}
 
 			delete[] cstr;
-		}
-		else if (firstCommand == "$ban") {
+		} else if (firstCommand == "$ban") {
 			if (splitCommands.size() != 2) {
 				h2mod->write_inner_chat_dynamic(L"Invalid ban command, usage - $ban GAMERTAG");
 				return;
@@ -205,6 +237,48 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 			listBannedPlayers();
+		} else if (firstCommand == "$printdistance") {
+			if (splitCommands.size() != 3) {
+				h2mod->write_inner_chat_dynamic(L"Invalid $printDistance command, usage - $printDistance playerIndex1 playerIndex2");
+				return;
+			}
+
+			/*Don't commit this, turn back on later
+			if (!isServer) {
+				h2mod->write_inner_chat_dynamic(L"printDistance can only be used on the server");
+				return;
+			}*/
+
+			std::string firstArg = splitCommands[1];
+			if (!isNum(firstArg.c_str())) {
+				h2mod->write_inner_chat_dynamic(L"playerIndex1 is not a number");
+				return;
+			}
+			int player1 = atoi(firstArg.c_str());
+			std::string secondArg = splitCommands[2];
+			if (!isNum(secondArg.c_str())) {
+				h2mod->write_inner_chat_dynamic(L"playerIndex2 is not a number");
+				return;
+			}
+			int player2 = atoi(secondArg.c_str());
+			printDistance(player1, player2);
+		}	else if (firstCommand == "$setvoiceactivationlevel") {
+			if (splitCommands.size() != 2) {
+				h2mod->write_inner_chat_dynamic(L"Invalid $setVoiceActivationLevel command, usage - $setVoiceActivationLevel activationLevel(-50 to 50)");
+				return;
+			}
+
+			std::string firstArg = splitCommands[1];
+			if (!isNum(firstArg.c_str())) {
+				h2mod->write_inner_chat_dynamic(L"activation level is not a number");
+				return;
+			}
+			float activationLevel = ::atof(firstArg.c_str());
+			if (activationLevel < MIN_VOICE_ACTIVATION_LEVEL || activationLevel > MAX_VOICE_ACTIVATION_LEVEL) {
+				h2mod->write_inner_chat_dynamic(L"activation level is not between -50 and 50, default is -45");
+			}
+
+			setVoiceActivationLevel(activationLevel);
 		}
 	}
 }

@@ -58,5 +58,7 @@ void cleanupClientAndServer();
 void startClient(bool startChatting);
 void startServer();
 
+extern UINT fps_enable;
+
 typedef struct _XOVERLAPPED             XOVERLAPPED, *PXOVERLAPPED;
 DWORD WINAPI XSessionLeaveRemote(HANDLE hSession, DWORD dxXuidCount, const XUID *pXuids, PXOVERLAPPED pXOverlapped);

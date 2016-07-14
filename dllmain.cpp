@@ -18,6 +18,7 @@ UINT g_debug = 0;
 UINT g_server = 0;
 UINT voice_chat = 0;
 BOOL isHost = false;
+UINT fps_enable = 1;
 
 //ULONG broadcast_server = inet_addr("174.37.215.13");
 
@@ -265,6 +266,7 @@ void InitInstance()
 				CHECK_ARG("debug log = ", g_debug);
 				CHECK_ARG("gungame =", b_GunGame);
 				CHECK_ARG("voice_chat = ", voice_chat);
+				CHECK_ARG("fps_enable = ", fps_enable);
 			}
 
 			

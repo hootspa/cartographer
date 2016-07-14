@@ -19,6 +19,9 @@ public:
 	void setNickname(char* nickname);
 	void unmute(char* name);
 	void mute(char* name, bool permanent);
+	void setVoiceActivationLevel(float level);
+	void mute(anyID clientToMute);
+	void unmute(anyID clientToMute);
 
 private:
 	char* identity;

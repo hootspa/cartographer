@@ -180,59 +180,79 @@ DWORD H2MOD::get_generated_id(int playerIndex) {
 	//return (*(DWORD*)player_table_ptr);
 }
 
-int H2MOD::get_dynamic_player_base(int playerIndex) {
+int H2MOD::get_dynamic_player_base(int playerIndex, bool resetDynamicBase) {
 	int tempSight = get_unit_datum_from_player_index(playerIndex);
-	int dynamicBase = playerIndexToDynamicBase[playerIndex];
-	if (tempSight != -1 && tempSight != 0 && dynamicBase <= 0) {
+	int cachedDynamicBase = playerIndexToDynamicBase[playerIndex];
+	if (tempSight != -1 && tempSight != 0 && (!cachedDynamicBase || resetDynamicBase)) {
 		//TODo: this is based on some weird implementation in HaloObjects.cs, need just to find real offsets to dynamic player pointer
 		//instead of this garbage
 		for (int i = 0; i < 2048; i++) {
-			int dynamicBase2 = *(DWORD*)(0x3003CF3C + (i * 12) + 8);
-			DWORD* possiblyDynamicBasePtr = (DWORD*)(dynamicBase2 + 0x3F8);
+			int possiblyDynamicBase = *(DWORD*)(0x3003CF3C + (i * 12) + 8);
+			DWORD* possiblyDynamicBasePtr = (DWORD*)(possiblyDynamicBase + 0x3F8);
 			if (possiblyDynamicBasePtr) {
-				//TODo: this sometimes fails, cause this whole impl is garbage
-				try {
-					int dynamicS = *possiblyDynamicBasePtr;
-					if (tempSight == dynamicS) {
-						return dynamicBase2;
-						//playerIndexToDynamicBase[playerIndex] = dynamicBase;
-						break;
-					}
-				}
-				catch (...) {
-					TRACE_GAME_N("Exception occured trying to read player dynamic base at index %d", i);
-					continue;
+				BYTE buffer[4];
+				//use readprocess memory since it will set the page memory and read/write
+				ReadProcessMemory(GetCurrentProcess(), (LPVOID)(possiblyDynamicBase + 0x3F8), &buffer, sizeof(buffer), NULL);
+				//little endian
+				int dynamicS2 = buffer[0] + (buffer[1] << 8) + (buffer[2] << 16) + (buffer[3] << 24);
+				if (tempSight == dynamicS2) {
+					playerIndexToDynamicBase[playerIndex] = possiblyDynamicBase;
+					return possiblyDynamicBase;
 				}
 			}
 		}
 	}
-	return -1;
+	return cachedDynamicBase;
 }
 
 int H2MOD::get_player_count() {
 	return *((int*)(0x30004B60));
 }
 
-float H2MOD::get_player_x(int playerIndex) {
-	int base = get_dynamic_player_base(playerIndex);
+float H2MOD::get_distance(int playerIndex1, int playerIndex2) {
+	float player1X, player1Y, player1Z;
+	float player2X, player2Y, player2Z;
+
+	player1X = h2mod->get_player_x(playerIndex1, false);
+	player1Y = h2mod->get_player_y(playerIndex1, false);
+	player1Z = h2mod->get_player_z(playerIndex1, false);
+
+	player2X = h2mod->get_player_x(playerIndex2, false);
+	player2Y = h2mod->get_player_y(playerIndex2, false);
+	player2Z = h2mod->get_player_z(playerIndex2, false);
+
+	float dx = abs(player1X - player2X);
+	float dy = abs(player1Y - player2Y);
+	float dz = abs(player1Z - player2Z);
+
+	return sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+}
+float H2MOD::get_player_x(int playerIndex, bool resetDynamicBase) {
+	int base = get_dynamic_player_base(playerIndex, resetDynamicBase);
 	if (base != -1) {
-		return *(float*)(base + 0x64);
+		float buffer;
+		ReadProcessMemory(GetCurrentProcess(), (LPVOID)(base + 0x64), &buffer, sizeof(buffer), NULL);
+		return buffer;
 	}
 	return 0.0f;
 }
 
-float H2MOD::get_player_y(int playerIndex) {
-	int base = get_dynamic_player_base(playerIndex);
+float H2MOD::get_player_y(int playerIndex, bool resetDynamicBase) {
+	int base = get_dynamic_player_base(playerIndex, resetDynamicBase);
 	if (base != -1) {
-		return *(float*)(base + 0x68);
+		float buffer;
+		ReadProcessMemory(GetCurrentProcess(), (LPVOID)(base + 0x68), &buffer, sizeof(buffer), NULL);
+		return buffer;
 	}
 	return 0.0f;
 }
 
-float H2MOD::get_player_z(int playerIndex) {
-	int base = get_dynamic_player_base(playerIndex);
+float H2MOD::get_player_z(int playerIndex, bool resetDynamicBase) {
+	int base = get_dynamic_player_base(playerIndex, resetDynamicBase);
 	if (base != -1) {
-		return *(float*)(base + 0x6C);
+		float buffer;
+		ReadProcessMemory(GetCurrentProcess(), (LPVOID)(base + 0x6C), &buffer, sizeof(buffer), NULL);
+		return buffer;
 	}
 	return 0.0f;
 }
@@ -345,7 +365,7 @@ void H2MOD::write_inner_chat_dynamic(const wchar_t* data) {
 	int v12 = v10 % 30;
 
 	if (*((DWORD *)v5 + v10 % 30 + 4)) {
-		free_halo_string_method(*((LPVOID *)v5 + v11 + 4));
+		HeapFree(GetProcessHeap(), 0, ((LPVOID *)v5 + v11 + 4));
 	}
 	//size in bytes
 	unsigned int v13 = wcslen(data) + 256;
