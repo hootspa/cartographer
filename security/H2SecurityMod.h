@@ -13,6 +13,7 @@
 
 class DLLEXPORT SecurityMod {
 public:
+	SecurityMod() {}
 	virtual ~SecurityMod() {}
 	virtual bool isLobby();
 	virtual DWORD getBase();
