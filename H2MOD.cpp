@@ -19,6 +19,8 @@
 
 class H2SecureMod : public SecurityMod {
 public:
+	H2SecureMod::H2SecureMod() {
+	}
 	virtual DWORD getBase() {
 		return h2mod->GetBase();
 	}
