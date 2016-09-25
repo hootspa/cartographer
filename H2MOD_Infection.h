@@ -6,7 +6,7 @@
 class InfectionPlayer
 {
 public:
-	wchar_t PlayerName[16];
+	wchar_t PlayerName[17] = { 0 };
 	bool infected;
 };
 

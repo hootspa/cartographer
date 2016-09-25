@@ -1646,8 +1646,7 @@ BOOL WINAPI XNotifyGetNext(HANDLE hNotification, DWORD dwMsgFilter, PDWORD pdwId
 		}
 		break;
 
-
-	default:
+		default:
 		break;
 	} // switch
 
@@ -5072,7 +5071,7 @@ DWORD WINAPI XLocatorServiceInitialize( DWORD a1, DWORD a2 )
   TRACE("XLocatorServiceInitialize  (a1 = %X, a2 = %X)",
 		a1, a2 );
 
-
+  a2 = 0x0000000;
 	/*
 	Lost Planet, Gears of War
 	- LocatorV1.434307DE.RTP.
@@ -5085,7 +5084,7 @@ DWORD WINAPI XLocatorServiceInitialize( DWORD a1, DWORD a2 )
 
 
 	// GFWL offline
-	return 1;
+	return 0;
 }
 
 

@@ -173,7 +173,7 @@ void Infection::SpawnPlayer(int PlayerIndex)
 	{
 		if (first_spawn == true)
 		{
-				h2mod->SoundMap[L"infection.wav"] = 1000;
+				h2mod->SoundMap[L"sounds/infection.wav"] = 1000;
 			
 
 			first_spawn = false;
@@ -181,7 +181,7 @@ void Infection::SpawnPlayer(int PlayerIndex)
 
 		if (h2mod->get_local_team_index() == 3 && infected_played == false)
 		{
-			h2mod->SoundMap[L"infected.wav"] = 500;
+			h2mod->SoundMap[L"sounds/infected.wav"] = 500;
 		
 			infected_played = true;
 		}
@@ -255,7 +255,7 @@ void Infection::PlayerInfected(int unit_datum_index)
 			}
 			else 
 			{
-				h2mod->SoundMap[L"new_zombie.wav"] = 1000;
+				h2mod->SoundMap[L"sounds/new_zombie.wav"] = 1000;
 			}
 		}
 #pragma endregion

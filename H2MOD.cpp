@@ -381,10 +381,6 @@ player_death pplayer_death;
 
 char __cdecl OnPlayerDeath(int unit_datum_index, int a2, char a3, char a4)
 {
-	
-	//TRACE_GAME("OnPlayerDeath(unit_datum_index: %08X, a2: %08X, a3: %08X, a4: %08X)", unit_datum_index,a2,a3,a4);
-	//TRACE_GAME("OnPlayerDeath() - Team: %i", h2mod->get_unit_team_index(unit_datum_index));
-
 #pragma region GunGame Handler
 	if (b_GunGame && isHost)
 		gg->PlayerDied(unit_datum_index);
@@ -403,9 +399,6 @@ update_player_score pupdate_player_score;
 
 void __stdcall OnPlayerScore(void* thisptr, unsigned short a2, int a3, int a4, int a5, char a6)
 {
-	//TRACE_GAME("update_player_score_hook ( thisptr: %08X, a2: %08X, a3: %08X, a4: %08X, a5: %08X, a6: %08X )", thisptr, a2, a3, a4, a5, a6);
-
-
 #pragma region GunGame Handler
 	if (a5 == 7) //player got a kill?
 	{
@@ -423,22 +416,9 @@ bool first_load = true;
 bool bcoop = false;
 
 // This whole hook is called every single time a map loads,
-// I've written a PHP script to compile the byte arrays due to the fact comparing unicode is a bitch.
-// Basically if we have a single player map we set bcoop = true so that the coop variables are setup.
 
 int __cdecl OnMapLoad(int a1)
 {
-	
-	/*wchar_t mp3[15] = L"new_zombie.mp3";
-	h2mod->play_mp3((LPWSTR)&mp3);
-
-
-	wchar_t mp32[13] = L"infected.mp3";
-	h2mod->play_mp3((LPWSTR)&mp32);*/
-
-
-
-
 	b_Infection = false;
 	b_GunGame = false;
 	
@@ -860,14 +840,16 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 								if (recvpak.h2auth().has_name())
 								{
 									wchar_t* PlayerName = new wchar_t[36];
-									memcpy(PlayerName, recvpak.h2auth().name().c_str(), 36);
+									memset(PlayerName, 0x00, 36);
+									wcscpy(PlayerName, (wchar_t*)recvpak.h2auth().name().c_str());
+									
 
 									for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it)
 									{
 										if (wcscmp(it->first->PlayerName, PlayerName) == 0)
 										{
 
-											TRACE_GAME("[h2mod-network] This player was already connected, sending them another packet letting them know they're authed already.");
+											TRACE_GAME("[h2mod-network] This player ( %ws ) was already connected, sending them another packet letting them know they're authed already.",PlayerName);
 
 											char* SendBuf = new char[recvpak.ByteSize()];
 											recvpak.SerializeToArray(SendBuf, recvpak.ByteSize());
@@ -941,7 +923,7 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 		h2pak.set_type(H2ModPacket_Type_authorize_client);
 
 		h2mod_auth *authpak = h2pak.mutable_h2auth();
-		authpak->set_name((char*)h2mod->get_local_player_name(),32);
+		authpak->set_name((char*)h2mod->get_local_player_name(),34);
 		authpak->set_secureaddr(User.LocalSec);
 
 		char* SendBuf = new char[h2pak.ByteSize()];
@@ -1079,11 +1061,10 @@ void H2MOD::Initialize()
 	{
 		this->Base = (DWORD)GetModuleHandleA("halo2.exe");
 		this->Server = FALSE;
-		//HANDLE Handle_Of_Sound_Thread = 0;
-		//int Data_Of_Sound_Thread = 1;
+
+
 		std::thread SoundT(SoundThread);
 		SoundT.detach();
-		//Handle_Of_Sound_Thread = CreateThread(NULL, 0, SoundQueue, &Data_Of_Sound_Thread, 0, NULL);
 	}
 
 	TRACE_GAME("H2MOD - Initialized v0.1a");
