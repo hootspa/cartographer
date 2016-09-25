@@ -35,6 +35,7 @@ enum CLIENT_CHAT_MODE {
 extern TSUsers* tsUsers;
 extern TSClient* client;
 extern TSServer* server;
+extern XNADDR join_game_xn;
 
 //extern H2Client* h2Client;
 

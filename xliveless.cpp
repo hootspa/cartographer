@@ -3136,7 +3136,7 @@ void startClient(bool startThread) {
 		TRACE_GAME_N("Client is NOT server and is trying to connect to address %s", inet_ntoa(serverAddr));
 	}
 	client->setServerAddress(serverAddr);
-	client->setServerPort(g_port + 8);
+	client->setServerPort(ntohs(join_game_xn.wPortOnline) + 8);
 
 	//only player 1 gets to use voice, guests don't
 	WCHAR strw[8192];
