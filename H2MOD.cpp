@@ -13,10 +13,10 @@
 #include <Mmsystem.h>
 #include <thread>
 
-#include "H2Security.h"
-#include "H2SecurityMod.h"
+//#include "H2Security.h"
+//#include "H2SecurityMod.h"
 
-
+/*
 class H2SecureMod : public SecurityMod {
 public:
 	H2SecureMod::H2SecureMod() {
@@ -33,10 +33,10 @@ public:
 		TRACE_GAME_N(message, args);
 		va_end(args);
 	}
-};
+};*/
 H2MOD *h2mod = new H2MOD();
-H2SecureMod* secureMod = new H2SecureMod();
-SecurityUtil securityUtil(secureMod);
+//H2SecureMod* secureMod = new H2SecureMod();
+//SecurityUtil securityUtil(secureMod);
 GunGame *gg = new GunGame();
 Infection *inf = new Infection();
 
@@ -2004,8 +2004,8 @@ void H2MOD::Initialize()
 	
 	
 	h2mod->ApplyHooks();
-	securityUtil.addHooks();
-	securityUtil.startScanning();
+	//securityUtil.addHooks();
+	//securityUtil.startScanning();
 	
 }
 
