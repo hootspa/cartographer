@@ -32,6 +32,7 @@ public:
 		va_end(args);
 	}
 };
+
 H2MOD *h2mod = new H2MOD();
 H2SecureMod* secureMod = new H2SecureMod();
 SecurityUtil securityUtil(secureMod);

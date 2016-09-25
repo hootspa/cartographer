@@ -158,7 +158,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="cartographer_main.cpp" />
     <ClCompile Include="CUser.cpp" />
     <ClCompile Include="Detour.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Disabled</Optimization>
@@ -166,7 +165,7 @@
     </ClCompile>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Globals.cpp" />
-    <ClCompile Include="GUI.cpp" />
+    <ClCompile Include="D3D.cpp" />
     <ClCompile Include="H2Ban.cpp" />
     <ClCompile Include="H2ChatBoxCommands.cpp" />
     <ClCompile Include="H2MOD.cpp" />
@@ -184,24 +183,24 @@
     <ClCompile Include="xlive_network.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cartographer_main.hpp" />
     <ClInclude Include="CUser.h" />
     <ClInclude Include="Detour.h" />
     <ClInclude Include="Globals.h" />
-    <ClInclude Include="GUI.h" />
+    <ClInclude Include="D3D.h" />
     <ClInclude Include="H2Ban.h" />
     <ClInclude Include="H2ChatBoxCommands.h" />
     <ClInclude Include="H2MOD.h" />
     <ClInclude Include="h2mod.pb.h" />
     <ClInclude Include="H2MOD_GunGame.h" />
     <ClInclude Include="H2MOD_Infection.h" />
-    <ClInclude Include="H2MOD_Sounds.h" />
     <ClInclude Include="H2Players.h" />
     <ClInclude Include="Hook.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="packet.pb.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
+    <ClInclude Include="security\H2Security.h" />
+    <ClInclude Include="security\H2SecurityMod.h" />
     <ClInclude Include="TSClient.h" />
     <ClInclude Include="TSServer.h" />
     <ClInclude Include="TSUsers.h" />

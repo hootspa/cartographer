@@ -38,11 +38,11 @@ class h2mod_auth;
 class h2mod_set_team;
 
 enum H2ModPacket_Type {
-  H2ModPacket_Type_authorize_client = 1,
-  H2ModPacket_Type_set_player_team = 2,
-  H2ModPacket_Type_h2mod_ping = 3,
-  H2ModPacket_Type_h2mod_pong = 4,
-  H2ModPacket_Type_set_unit_grenades = 5
+  H2ModPacket_Type_authorize_client = 2,
+  H2ModPacket_Type_set_player_team = 3,
+  H2ModPacket_Type_h2mod_ping = 4,
+  H2ModPacket_Type_h2mod_pong = 5,
+  H2ModPacket_Type_set_unit_grenades = 6
 };
 bool H2ModPacket_Type_IsValid(int value);
 const H2ModPacket_Type H2ModPacket_Type_Type_MIN = H2ModPacket_Type_authorize_client;
@@ -506,7 +506,7 @@ inline void H2ModPacket::clear_has_type() {
   _has_bits_[0] &= ~0x00000001u;
 }
 inline void H2ModPacket::clear_type() {
-  type_ = 1;
+  type_ = 2;
   clear_has_type();
 }
 inline ::H2ModPacket_Type H2ModPacket::type() const {

@@ -1,18 +1,10 @@
-//#include <windows.h>
 #include <d3d9.h>
 #include <d3dx9.h>
 #include <iostream>
 #include <memory>
-
-//#include <OSHGui.hpp>
-//#include <Drawing/Direct3D9/Direct3D9Renderer.hpp>
-//#include <Input/WindowsMessage.hpp>
-#include "GUI.h"
+#include "D3D.h"
 #include "H2MOD.h"
 #include "xliveless.h"
-#include "cartographer_main.hpp"
-
-
 
 extern void InitInstance();
 

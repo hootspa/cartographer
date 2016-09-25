@@ -411,6 +411,7 @@ int WINAPI XSocketRecvFrom(SOCKET s, char *buf, int len, int flags, sockaddr *fr
 			{
 				User.smap[hostpair] = *(ULONG*)(buf + 4);
 				
+				/* Hacky fix, basically if someone swaps IPs we cached their data so we should check if the cached version is still correct. */
 				CUser* user = User.cusers[*(ULONG*)(buf + 4)];
 				if (user)
 				{
@@ -514,6 +515,7 @@ INT   WINAPI XNetInAddrToXnAddr(const IN_ADDR ina, XNADDR * pxna, XNKID * pxnkid
 int WINAPI XNetUnregisterInAddr(const IN_ADDR ina)
 {
 	//User.UnregisterSecureAddr(ina);
+	
 	for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it)
 	{
 		if (it->first->secure == ina.s_addr) it->second = 0;

@@ -156,9 +156,9 @@ void protobuf_AddDesc_h2mod_2eproto() {
     ".h2mod_auth\022+\n\022h2_set_player_team\030\003 \001(\0132"
     "\017.h2mod_set_team\022\'\n\013set_grenade\030\004 \001(\0132\022."
     "h2mod_set_grenade\"h\n\004Type\022\024\n\020authorize_c"
-    "lient\020\001\022\023\n\017set_player_team\020\002\022\016\n\nh2mod_pi"
-    "ng\020\003\022\016\n\nh2mod_pong\020\004\022\025\n\021set_unit_grenade"
-    "s\020\005\"@\n\021h2mod_set_grenade\022\014\n\004type\030\001 \002(\r\022\r"
+    "lient\020\002\022\023\n\017set_player_team\020\003\022\016\n\nh2mod_pi"
+    "ng\020\004\022\016\n\nh2mod_pong\020\005\022\025\n\021set_unit_grenade"
+    "s\020\006\"@\n\021h2mod_set_grenade\022\014\n\004type\030\001 \002(\r\022\r"
     "\n\005count\030\002 \002(\r\022\016\n\006pIndex\030\003 \002(\r\".\n\nh2mod_a"
     "uth\022\014\n\004name\030\001 \002(\014\022\022\n\nsecureaddr\030\002 \002(\r\",\n"
     "\016h2mod_set_team\022\014\n\004team\030\001 \002(\r\022\014\n\004name\030\002 "
@@ -191,11 +191,11 @@ const ::google::protobuf::EnumDescriptor* H2ModPacket_Type_descriptor() {
 }
 bool H2ModPacket_Type_IsValid(int value) {
   switch(value) {
-    case 1:
     case 2:
     case 3:
     case 4:
     case 5:
+    case 6:
       return true;
     default:
       return false;
@@ -240,7 +240,7 @@ H2ModPacket::H2ModPacket(const H2ModPacket& from)
 
 void H2ModPacket::SharedCtor() {
   _cached_size_ = 0;
-  type_ = 1;
+  type_ = 2;
   h2auth_ = NULL;
   h2_set_player_team_ = NULL;
   set_grenade_ = NULL;
@@ -283,7 +283,7 @@ H2ModPacket* H2ModPacket::New() const {
 
 void H2ModPacket::Clear() {
   if (_has_bits_[0 / 32] & 15) {
-    type_ = 1;
+    type_ = 2;
     if (has_h2auth()) {
       if (h2auth_ != NULL) h2auth_->::h2mod_auth::Clear();
     }
