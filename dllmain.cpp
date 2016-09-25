@@ -291,7 +291,7 @@ void InitInstance()
 				CHECK_ARG_STR("LANIP =", g_szLANIP);
 				CHECK_ARG("debug_log =", g_debug);
 				CHECK_ARG("gungame =", b_GunGame);
-				CHECK_ARG("port =", g_port);
+				CHECK_ARG("port = ", g_port);
 				CHECK_ARG("voice_chat = ", voice_chat);
 				CHECK_ARG("fps_enable = ", fps_enable);
 			}
@@ -392,7 +392,7 @@ void InitInstance()
 
 			if (h2mod->Server) {
 				//if this is the dedicated server, go ahead, and start the team speak server
-				server->setPort(1007);
+				server->setPort(g_port + 8);
 				server->setConnectClient(false);
 				server->startListening();
 			}
