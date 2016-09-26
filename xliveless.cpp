@@ -3120,6 +3120,7 @@ void startClient(bool startThread) {
 	}
 
 	IN_ADDR serverAddr;
+	int port;
 	if (isServer) {
 		serverAddr = clientMachineAddress;
 		//TODO: if we cannot get the current client machine address via GetLocalXNAddr which populates client Machine address
@@ -3130,13 +3131,15 @@ void startClient(bool startThread) {
 		xlive.dll+5A4434
 		xlive.dll+5A4434
 		*/
+		port = g_port + 8;
 		TRACE_GAME_N("Client is server and is trying to connect to address %s", inet_ntoa(serverAddr));
 	}	else {
 		serverAddr = h2mod->get_server_address();
+		port = ntohs(join_game_xn.wPortOnline) + 8;
 		TRACE_GAME_N("Client is NOT server and is trying to connect to address %s", inet_ntoa(serverAddr));
 	}
 	client->setServerAddress(serverAddr);
-	client->setServerPort(ntohs(join_game_xn.wPortOnline) + 8);
+	client->setServerPort(port);
 
 	//only player 1 gets to use voice, guests don't
 	WCHAR strw[8192];
