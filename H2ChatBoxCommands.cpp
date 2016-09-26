@@ -385,5 +385,35 @@ void ChatBoxCommands::handle_command(std::string command) {
 			init_critical_section_method((int)unk);
 			possible_map_reload_method((int)unk);
 		}
+		else if (firstCommand == "$spawn") {
+			if (splitCommands.size() != 2) {
+				h2mod->write_inner_chat_dynamic(L"Invalid command, usage $spawn ");
+				return;
+			}
+
+				std::string firstArg = splitCommands[1];
+				char *cstr = new char[firstArg.length() + 1];
+				strcpy(cstr, firstArg.c_str());
+			
+				printf("string object_datum = %s", cstr);
+
+				unsigned int object_datum = strtoul(cstr, NULL, 0);
+				printf("object_datum: %08X\n", object_datum);
+				TRACE_GAME("object_datum = %08X", object_datum);
+				
+				char* nObject = new char[0xC4]; 
+				DWORD dwBack;
+				VirtualProtect(nObject, 0xC4, PAGE_EXECUTE_READWRITE, &dwBack);
+				
+				if (object_datum)
+				{
+					unsigned int player_datum = h2mod->get_unit_datum_from_player_index(0);
+					call_object_placement_data_new(nObject, object_datum, player_datum, 0);
+
+					unsigned int object_index = call_object_new(nObject);
+
+					
+				}
+		}
 	}
 }

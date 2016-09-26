@@ -69,6 +69,7 @@ enum Weapon
 	juggernaut_powerup = 0xF33838D2 //35
 };
 
+signed int call_object_create(int a1, bool bClone);
 int __cdecl call_get_object(signed int object_datum_index, int object_type);
 int __cdecl call_unit_reset_equipment(int unit_datum_index);
 int __cdecl call_hs_object_destroy(int object_datum_index);

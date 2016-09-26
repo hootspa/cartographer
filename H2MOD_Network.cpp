@@ -20,7 +20,8 @@ extern bool ThreadCreated;
 extern XNADDR join_game_xn;
 extern CUserManagement User;
 SOCKET comm_socket = INVALID_SOCKET;
-char* NetworkData = new char[500];
+
+char* NetworkData = new char[255];
 
 
 DWORD WINAPI NetworkThread(LPVOID lParam)
@@ -61,11 +62,6 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 		TRACE_GAME("[h2mod-network] socket already existed continuing without attempting bind...");
 	}
 
-
-
-
-
-
 	TRACE_GAME("[h2mod-network] Are we host? %i", isHost);
 
 	NetworkActive = true;
@@ -74,7 +70,7 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 	{
 		TRACE_GAME("[h2mod-network] We're host waiting for a authorization packet from joining clients...");
 
-		while (1)
+		while (true)
 		{
 
 			if (NetworkActive == false)
@@ -129,47 +125,74 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 				}
 			}
 
-			memset(NetworkData, 0x00, 500);
-			int recvresult = recvfrom(comm_socket, NetworkData, 500, 0, (sockaddr*)&SenderAddr, &SenderAddrSize);
+			memset(NetworkData, 0x00, 255);
+			int recvresult = recvfrom(comm_socket, NetworkData, 255, 0, (sockaddr*)&SenderAddr, &SenderAddrSize);
 
 			if (recvresult > 0)
 			{
 				TRACE_GAME("[H2MOD-Network] recvresult: %i", recvresult);
-				int data_handled = 0;
-
-				while (data_handled != recvresult)
-				{
-
-
-					bool already_authed = false;
-					H2ModPacket recvpak;
-					recvpak.ParseFromArray(NetworkData, (recvresult - data_handled));
-					TRACE_GAME("[H2Mod-Network] data_handled: %i, recvpak.ByteSize(): %i", data_handled,recvpak.ByteSize());
-
-					memcpy(NetworkData, &NetworkData[recvpak.ByteSize()], (recvresult - recvpak.ByteSize() - data_handled));
+				
+				bool already_authed = false;
+				H2ModPacket recvpak;
+				recvpak.ParseFromArray(NetworkData, recvresult);
+				TRACE_GAME("[H2Mod-Network] recvpak.ByteSize(): %i", recvpak.ByteSize());
 
 					if (recvpak.has_type())
 					{
 						switch (recvpak.type())
 						{
 
-						case H2ModPacket_Type_authorize_client:
-							TRACE_GAME("[h2mod-network] Player Connected!");
-							if (recvpak.has_h2auth())
-							{
-								if (recvpak.h2auth().has_name())
+							case H2ModPacket_Type_authorize_client:
+								TRACE_GAME("[h2mod-network] Player Connected!");
+								if (recvpak.has_h2auth())
 								{
-									wchar_t* PlayerName = new wchar_t[17];
-									memset(PlayerName, 0x00, 17);
-									wcscpy(PlayerName, (wchar_t*)recvpak.h2auth().name().c_str());
-
-
-									for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it)
+									if (recvpak.h2auth().has_name())
 									{
-										if (wcscmp(it->first->PlayerName, PlayerName) == 0)
-										{
+										wchar_t* PlayerName = new wchar_t[17];
+										memset(PlayerName, 0x00, 17);
+										wcscpy(PlayerName, (wchar_t*)recvpak.h2auth().name().c_str());
 
-											TRACE_GAME("[h2mod-network] This player ( %ws ) was already connected, sending them another packet letting them know they're authed already.", PlayerName);
+
+										for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it)
+										{
+											if (wcscmp(it->first->PlayerName, PlayerName) == 0)
+											{
+
+												TRACE_GAME("[h2mod-network] This player ( %ws ) was already connected, sending them another packet letting them know they're authed already.", PlayerName);
+
+												H2ModPacket h2pak;
+												h2pak.set_type(H2ModPacket_Type_authorize_client);
+
+												h2mod_auth *authpak = h2pak.mutable_h2auth();
+												authpak->set_name(PlayerName, 34);
+												authpak->set_secureaddr(recvpak.h2auth().secureaddr());
+
+												char* SendBuf = new char[h2pak.ByteSize()];
+												memset(SendBuf, 0x00, h2pak.ByteSize());
+												h2pak.SerializeToArray(SendBuf, h2pak.ByteSize());
+
+												sendto(comm_socket, SendBuf, h2pak.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
+
+
+												already_authed = true;
+
+												delete[] SendBuf;
+											}
+									}
+
+										if (already_authed == false)
+										{
+											NetworkPlayer *nPlayer = new NetworkPlayer;
+
+
+											TRACE_GAME("[h2mod-network] PlayerName: %ws", PlayerName);
+											TRACE_GAME("[h2mod-network] IP:PORT: %08X:%i", SenderAddr.sin_addr.s_addr, ntohs(SenderAddr.sin_port));
+
+											nPlayer->addr = SenderAddr.sin_addr.s_addr;
+											nPlayer->port = SenderAddr.sin_port;
+											nPlayer->PlayerName = PlayerName;
+											nPlayer->secure = recvpak.h2auth().secureaddr();
+											h2mod->NetworkPlayers[nPlayer] = 1;
 
 											H2ModPacket h2pak;
 											h2pak.set_type(H2ModPacket_Type_authorize_client);
@@ -184,45 +207,11 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 
 											sendto(comm_socket, SendBuf, h2pak.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
 
-
-											already_authed = true;
-
 											delete[] SendBuf;
 										}
 									}
-
-									if (already_authed == false)
-									{
-										NetworkPlayer *nPlayer = new NetworkPlayer;
-
-
-										TRACE_GAME("[h2mod-network] PlayerName: %ws", PlayerName);
-										TRACE_GAME("[h2mod-network] IP:PORT: %08X:%i", SenderAddr.sin_addr.s_addr, ntohs(SenderAddr.sin_port));
-
-										nPlayer->addr = SenderAddr.sin_addr.s_addr;
-										nPlayer->port = SenderAddr.sin_port;
-										nPlayer->PlayerName = PlayerName;
-										nPlayer->secure = recvpak.h2auth().secureaddr();
-										h2mod->NetworkPlayers[nPlayer] = 1;
-
-										H2ModPacket h2pak;
-										h2pak.set_type(H2ModPacket_Type_authorize_client);
-
-										h2mod_auth *authpak = h2pak.mutable_h2auth();
-										authpak->set_name(PlayerName, 34);
-										authpak->set_secureaddr(recvpak.h2auth().secureaddr());
-
-										char* SendBuf = new char[h2pak.ByteSize()];
-										memset(SendBuf, 0x00, h2pak.ByteSize());
-										h2pak.SerializeToArray(SendBuf, h2pak.ByteSize());
-
-										sendto(comm_socket, SendBuf, h2pak.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
-
-										delete[] SendBuf;
-									}
-								}
 							}
-							break;
+						break;
 
 						case H2ModPacket_Type_h2mod_ping:
 							H2ModPacket pongpak;
@@ -236,13 +225,12 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 							sendto(comm_socket, pongdata, recvpak.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
 
 							delete[] pongdata;
-							break;
+						break;
 
 						}
 					}
-					data_handled = data_handled + recvpak.ByteSize();
-				}
-				Sleep(500);
+				
+				Sleep(1);
 			}
 		}
 	}
@@ -272,8 +260,13 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 
 		sendto(comm_socket, SendBuf, h2pak.ByteSize(), 0, (SOCKADDR*)&SendStruct, sizeof(SendStruct));
 
-		while (1)
+		auto last_ping = std::chrono::high_resolution_clock::now();
+		auto last_connect_attempt = std::chrono::high_resolution_clock::now();
+
+		while (true)
 		{
+			auto time_now = std::chrono::high_resolution_clock::now();
+
 			if (NetworkActive == false)
 			{
 				isHost = false;
@@ -284,46 +277,65 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 				return 0;
 			}
 
-			if (Connected == false)
+			
+			auto seconds_passed_connect = std::chrono::duration_cast<std::chrono::seconds>(time_now - last_connect_attempt).count();
+
+			if (Connected == false && seconds_passed_connect > 5)
 			{
-				TRACE_GAME("[h2mod-network] Client - we're not connected re-sending our auth..");
+				TRACE_GAME("[h2mod-network] Client - we're not connected re-sending our auth.. seconds_passed_connect: %i",seconds_passed_connect);
 				sendto(comm_socket, SendBuf, h2pak.ByteSize(), 0, (SOCKADDR*)&SendStruct, sizeof(SendStruct));
+				last_connect_attempt = std::chrono::high_resolution_clock::now();
+			}
+
+			auto seconds_passed_ping = std::chrono::duration_cast<std::chrono::seconds>(time_now - last_ping).count();
+
+			if (Connected == true && seconds_passed_ping > 5)
+			{
+				TRACE_GAME("[H2MOD-Network] We're connected so sending ping packets... seconds_passed_ping: %i",seconds_passed_ping);
+
+				H2ModPacket pack;
+				pack.set_type(H2ModPacket_Type_h2mod_ping);
+
+				char* SendBuf = new char[pack.ByteSize()];
+				memset(SendBuf, 0x00, pack.ByteSize());
+				pack.SerializeToArray(SendBuf, pack.ByteSize());
+
+				sendto(comm_socket, SendBuf, pack.ByteSize(), 0, (SOCKADDR*)&SendStruct, sizeof(SendStruct));
+
+				delete[] SendBuf;
+				
+				last_ping = std::chrono::high_resolution_clock::now();
+
 			}
 
 			sockaddr_in SenderAddr;
 			int SenderAddrSize = sizeof(SenderAddr);
 
-			memset(NetworkData, 0x00, 500);
+			memset(NetworkData, 0x00, 255);
 
-			int recvresult = recvfrom(comm_socket, NetworkData, 500, 0, (sockaddr*)&SenderAddr, &SenderAddrSize);
+			int recvresult = recvfrom(comm_socket, NetworkData, 255, 0, (sockaddr*)&SenderAddr, &SenderAddrSize);
 
 			if (recvresult > 0)
 			{
 				TRACE_GAME("[H2MOD-Network] recvresult: %i", recvresult);
-				int data_handled = 0;
-
-				while(data_handled != recvresult)
-				{
-				
+			
 					H2ModPacket recvpak;
-					recvpak.ParseFromArray(NetworkData, (recvresult-data_handled) );
-					TRACE_GAME("[H2Mod-Network] data_handled: %i, recvpak.ByteSize(): %i", data_handled,recvpak.ByteSize());
-
-					memcpy(NetworkData, &NetworkData[recvpak.ByteSize()], ( recvresult - recvpak.ByteSize() - data_handled ));
+					recvpak.ParseFromArray(NetworkData, recvresult );
+					TRACE_GAME("[H2Mod-Network] recvpak.ByteSize(): %i", recvpak.ByteSize());
 
 					if (recvpak.has_type())
 					{
 						switch (recvpak.type())
 						{
 							case H2ModPacket_Type_h2mod_pong:
-								TRACE("[h2mod-network] Got a pong packet back!");
-								break;
+								TRACE_GAME("[h2mod-network] Got a pong packet back!");
+							break;
 
 							case H2ModPacket_Type_authorize_client:
 
 								if (Connected == false)
 								{
-									TRACE("[h2mod-network] Got the auth packet back!, We're connected!");
+									TRACE_GAME("[h2mod-network] Got the auth packet back!, We're connected!");
 									Connected = true;
 								}
 
@@ -354,30 +366,9 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 							break;
 						}
 					}
-
-					data_handled = data_handled + recvpak.ByteSize();
-				}
-
 			}
 
-			if (Connected == true)
-			{
-				TRACE_GAME("[H2MOD-Network] We're connected so sending ping packets...");
-
-				H2ModPacket pack;
-				pack.set_type(H2ModPacket_Type_h2mod_ping);
-
-				char* SendBuf = new char[pack.ByteSize()];
-				memset(SendBuf, 0x00, pack.ByteSize());
-				pack.SerializeToArray(SendBuf, pack.ByteSize());
-
-				sendto(comm_socket, SendBuf, pack.ByteSize(), 0, (SOCKADDR*)&SendStruct, sizeof(SendStruct));
-
-				delete[] SendBuf;
-			}
-
-
-			Sleep(500);
+			Sleep(1);
 		}
 
 	}

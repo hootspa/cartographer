@@ -5,6 +5,7 @@
 #include "H2MOD.h"
 #include "H2MOD_GunGame.h"
 #include "H2MOD_Infection.h"
+#include "H2MOD_Network.h"
 #include "Network.h"
 #include "xliveless.h"
 #include "Globals.h"
@@ -55,8 +56,6 @@ extern bool ThreadCreated;
 extern ULONG broadcast_server;
 
 
-SOCKET comm_socket = INVALID_SOCKET;
-char* NetworkData = new char[255];
 
 HMODULE base;
 
@@ -64,28 +63,57 @@ extern int MasterState;
 
 
 #pragma region engine calls
-
 int __cdecl call_get_object(signed int object_datum_index, int object_type)
 {
 	//TRACE_GAME("call_get_object( object_datum_index: %08X, object_type: %08X )", object_datum_index, object_type);
 
-	typedef int(__cdecl *get_object)(signed int object_datum_index, int object_type);
-	get_object pget_object = (get_object)((char*)h2mod->GetBase() + 0x1304E3);
+	if (h2mod->Server)
+	{
+		typedef int(__cdecl *get_object)(signed int object_datum_index, int object_type);
 
-	return pget_object(object_datum_index, object_type);
+		get_object pget_object = (get_object)((char*)h2mod->GetBase() + 0x11F3A6);
+		return pget_object(object_datum_index, object_type);
+	}
+	else
+	{
+		typedef int(__cdecl *get_object)(signed int object_datum_index, int object_type);
+		get_object pget_object = (get_object)((char*)h2mod->GetBase() + 0x1304E3);
+
+		return pget_object(object_datum_index, object_type);
+	}
+
+	return 0;
 }
 
 int __cdecl call_unit_reset_equipment(int unit_datum_index)
 {
 	//TRACE_GAME("unit_reset_equipment(unit_datum_index: %08X)", unit_datum_index);
 
-	typedef int(__cdecl *unit_reset_equipment)(int unit_datum_index);
-	unit_reset_equipment punit_reset_equipment = (unit_reset_equipment)(((char*)h2mod->GetBase()) + 0x1441E0);
+	
 
-	if (unit_datum_index != -1 && unit_datum_index != 0)
+
+	if (h2mod->Server)
 	{
-		return punit_reset_equipment(unit_datum_index);
+		typedef int(__cdecl *unit_reset_equipment)(int unit_datum_index);
+		unit_reset_equipment punit_reset_equipment = (unit_reset_equipment)(((char*)h2mod->GetBase()) + 0x133030);
+
+		if (unit_datum_index != -1 && unit_datum_index != 0)
+		{
+			return punit_reset_equipment(unit_datum_index);
+		}
+
 	}
+	else
+	{
+		typedef int(__cdecl *unit_reset_equipment)(int unit_datum_index);
+		unit_reset_equipment punit_reset_equipment = (unit_reset_equipment)(((char*)h2mod->GetBase()) + 0x1441E0);
+
+		if (unit_datum_index != -1 && unit_datum_index != 0)
+		{
+			return punit_reset_equipment(unit_datum_index);
+		}
+	}
+	
 
 	return 0;
 }
@@ -111,11 +139,26 @@ signed int __cdecl call_unit_inventory_next_weapon(unsigned short unit)
 bool __cdecl call_assign_equipment_to_unit(int unit, int object_index, short unk)
 {
 	//TRACE_GAME("assign_equipment_to_unit(unit: %08X,object_index: %08X,unk: %08X)", unit, object_index, unk);
-	typedef bool(__cdecl *assign_equipment_to_unit)(int unit, int object_index, short unk);
-	assign_equipment_to_unit passign_equipment_to_unit = (assign_equipment_to_unit)(((char*)h2mod->GetBase()) + 0x1442AA);
 
+		
+	
 
-	return passign_equipment_to_unit(unit, object_index, unk);
+	if (h2mod->Server)
+	{
+		typedef bool(__cdecl *assign_equipment_to_unit)(int unit, int object_index, short unk);
+		assign_equipment_to_unit passign_equipment_to_unit = (assign_equipment_to_unit)(((char*)h2mod->GetBase()) + 0x1330FA);
+
+		return passign_equipment_to_unit(unit, object_index, unk);
+	}
+	else
+	{
+		typedef bool(__cdecl *assign_equipment_to_unit)(int unit, int object_index, short unk);
+		assign_equipment_to_unit passign_equipment_to_unit = (assign_equipment_to_unit)(((char*)h2mod->GetBase()) + 0x1442AA);
+
+		return passign_equipment_to_unit(unit, object_index, unk);
+	}
+	
+	return 0;
 }
 
 int __cdecl call_object_placement_data_new(void* s_object_placement_data, int object_definition_index, int object_owner, int unk)
@@ -124,20 +167,49 @@ int __cdecl call_object_placement_data_new(void* s_object_placement_data, int ob
 	//TRACE_GAME("object_placement_data_new(s_object_placement_data: %08X,",s_object_placement_data);
 	//TRACE_GAME("object_definition_index: %08X, object_owner: %08X, unk: %08X)", object_definition_index, object_owner, unk);
 
-	typedef int(__cdecl *object_placement_data_new)(void*, int, int, int);
-	object_placement_data_new pobject_placement_data_new = (object_placement_data_new)(((char*)h2mod->GetBase()) + 0x132163);
+	
+
+	if (h2mod->Server)
+	{
+		typedef int(__cdecl *object_placement_data_new)(void*, int, int, int);
+		object_placement_data_new pobject_placement_data_new = (object_placement_data_new)(((char*)h2mod->GetBase()) + 0x121033);
+
+		return pobject_placement_data_new(s_object_placement_data, object_definition_index, object_owner, unk);
+	}
+	else
+	{
+		typedef int(__cdecl *object_placement_data_new)(void*, int, int, int);
+		object_placement_data_new pobject_placement_data_new = (object_placement_data_new)(((char*)h2mod->GetBase()) + 0x132163);
+
+		return pobject_placement_data_new(s_object_placement_data, object_definition_index, object_owner, unk);
+	}
 
 
-	return pobject_placement_data_new(s_object_placement_data, object_definition_index, object_owner, unk);
+	return 0;
 }
 
 signed int __cdecl call_object_new(void* pObject)
 {
 	//TRACE_GAME("object_new(pObject: %08X)", pObject);
-	typedef int(__cdecl *object_new)(void*);
-	object_new pobject_new = (object_new)(((char*)h2mod->GetBase()) + 0x136CA7);
 	
-	return pobject_new(pObject);
+
+	
+	if (h2mod->Server)
+	{
+		typedef int(__cdecl *object_new)(void*);
+		object_new pobject_new = (object_new)(((char*)h2mod->GetBase()) + 0x125B77);
+
+		return pobject_new(pObject);
+	}
+	else
+	{
+		typedef int(__cdecl *object_new)(void*);
+		object_new pobject_new = (object_new)(((char*)h2mod->GetBase()) + 0x136CA7);
+
+		return pobject_new(pObject);
+	}
+
+	return 0;
 }
 
 #pragma endregion
@@ -285,7 +357,11 @@ BOOL H2MOD::is_same_team(int p1, int p2) {
 int H2MOD::get_unit_datum_from_player_index(int pIndex)
 {
 	int unit = 0;
-	DWORD player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	DWORD player_table_ptr;
+	if (!h2mod->Server)
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	else
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004D64C4);
 	player_table_ptr += 0x44;
 
 	unit = (int)*(int*)(*(DWORD*)player_table_ptr + (pIndex * 0x204) + 0x28);
@@ -296,7 +372,12 @@ int H2MOD::get_unit_datum_from_player_index(int pIndex)
 int H2MOD::get_unit_from_player_index(int pIndex)
 {
 	int unit = 0;
-	DWORD player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	DWORD player_table_ptr;
+	if (!h2mod->Server)
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	else
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004D64C4);
+
 	player_table_ptr += 0x44;
 
 	unit = (int)*(short*)(*(DWORD*)player_table_ptr + (pIndex * 0x204) + 0x28);
@@ -1048,7 +1129,12 @@ wchar_t* H2MOD::get_local_player_name()
 
 int H2MOD::get_player_index_from_name(wchar_t* playername)
 {
-	DWORD player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	DWORD player_table_ptr;
+	if (!h2mod->Server)
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	else
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004D64C4);
+
 	player_table_ptr += 0x44;
 
 	for (int i = 0; i<=16; i++)
@@ -1066,7 +1152,11 @@ int H2MOD::get_player_index_from_name(wchar_t* playername)
 
 wchar_t* H2MOD::get_player_name_from_index(int pIndex)
 {
-	DWORD player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	DWORD player_table_ptr;
+	if (!h2mod->Server)
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	else
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004D64C4);
 	player_table_ptr += 0x44;
 
 	return	(wchar_t*)(*(DWORD*)player_table_ptr + (pIndex * 0x204) + 0x40);
@@ -1075,7 +1165,13 @@ wchar_t* H2MOD::get_player_name_from_index(int pIndex)
 int H2MOD::get_player_index_from_unit_datum(int unit_datum_index)
 {
 	int pIndex = 0;
-	DWORD player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+
+	DWORD player_table_ptr;
+	if(!h2mod->Server)
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004A8260);
+	else
+		player_table_ptr = *(DWORD*)(this->GetBase() + 0x004D64C4);
+
 	player_table_ptr += 0x44;
 	
 	for (pIndex = 0; pIndex <= 16; pIndex++)
@@ -1110,8 +1206,14 @@ void H2MOD::set_unit_team_index(int unit_datum_index, BYTE team)
 
 void H2MOD::set_unit_biped(BYTE biped,int pIndex)
 {
-	if (pIndex < 17)
-		*(BYTE*)(((char*)0x30002BA0 + (pIndex * 0x204))) = biped;
+	if (pIndex <= 16)
+	{
+		if (!h2mod->Server)
+			*(BYTE*)(((char*)0x30002BA0 + (pIndex * 0x204))) = biped;
+		else
+			*(BYTE*)(((char*)0x3000274C + (pIndex * 0x204))) = biped;
+	}
+		
 }
 
 void H2MOD::set_local_team_index(BYTE team)
@@ -1218,7 +1320,7 @@ void H2MOD::DisableSound(int sound)
 
 void SoundThread(void)
 {
-
+	TRACE_GAME("[H2MOD-SoundThread]");
 	while (1)
 	{	
 		if (h2mod->SoundMap.size() > 0)
@@ -1255,6 +1357,7 @@ player_death pplayer_death;
 
 char __cdecl OnPlayerDeath(int unit_datum_index, int a2, char a3, char a4)
 {
+	TRACE_GAME("OnPlayerDeath()");
 #pragma region GunGame Handler
 	if (b_GunGame && isHost)
 		gg->PlayerDied(unit_datum_index);
@@ -1273,6 +1376,7 @@ update_player_score pupdate_player_score;
 
 void __stdcall OnPlayerScore(void* thisptr, unsigned short a2, int a3, int a4, int a5, char a6)
 {
+	TRACE_GAME("OnPlayerScore()");
 #pragma region GunGame Handler
 	if (a5 == 7) //player got a kill?
 	{
@@ -1296,7 +1400,13 @@ int __cdecl OnMapLoad(int a1)
 	b_Infection = false;
 	b_GunGame = false;
 	
-	wchar_t* variant_name = (wchar_t*)(((char*)h2mod->GetBase())+0x97777C);
+	wchar_t* variant_name;
+
+	if (!h2mod->Server)
+		 variant_name = (wchar_t*)(((char*)h2mod->GetBase()) + 0x97777C);
+	else
+		variant_name = (wchar_t*)(((char*)h2mod->GetBase()) + 0x48D708);
+	
 
 	TRACE_GAME("[h2mod] OnMapLoad variant name %ws", variant_name);
 
@@ -1315,8 +1425,14 @@ int __cdecl OnMapLoad(int a1)
 #pragma region COOP FIXES
 	bcoop = false;
 	
-	DWORD game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
-	BYTE* engine_mode = (BYTE*)(game_globals + 8);
+	BYTE* engine_mode;
+	DWORD game_globals;
+
+	if (!h2mod->Server)
+	{
+		game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
+		engine_mode = (BYTE*)(game_globals + 8);
+	}
 
 	BYTE quarntine_zone[86] = { 0x73, 0x00, 0x63, 0x00, 0x65, 0x00, 0x6E, 0x00, 0x61, 0x00, 0x72, 
 								0x00, 0x69, 0x00, 0x6F, 0x00, 0x73, 0x00, 0x5C, 0x00, 0x6D, 0x00, 
@@ -1333,51 +1449,67 @@ int __cdecl OnMapLoad(int a1)
 						   0x00, 0x6E, 0x00, 0x75, 0x00, 0x5C, 0x00, 0x6D, 0x00, 0x61, 0x00, 0x69, 0x00, 
 						   0x6E, 0x00, 0x6D, 0x00, 0x65, 0x00, 0x6E, 0x00, 0x75, 0x00 };
 
-	if (!memcmp(main_menu, (BYTE*)0x300017E0, 60))
-	{
-		DWORD game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
-		BYTE* garbage_collect = (BYTE*)(game_globals + 0xC);
-		*(garbage_collect) = 1;
 
-		TRACE("Loading mainmenu");
-		isLobby = true;
-		MasterState = 5;
+
+	if (!h2mod->Server)
+	{
+
+		if (!memcmp(main_menu, (BYTE*)0x300017E0, 60))
+		{
+				game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
+				BYTE* garbage_collect = (BYTE*)(game_globals + 0xC);
+				*(garbage_collect) = 1;
+			
+			TRACE("Loading mainmenu");
+			isLobby = true;
+			MasterState = 5;
+
+		}
+		else
+		{
+
+			MasterState = 4;
+		}
 
 	}
 	else 
 	{
-
+		isLobby = true;
 		MasterState = 4;
 	}
+
 	//everytime we load a map, clear the player index dynamic base map
 	h2mod->playerIndexToDynamicBase.clear();
 
-	if (!memcmp(quarntine_zone, (BYTE*)0x300017E0, 86) && *(engine_mode) == 2 ) // check the map and if we're loading a multiplayer game (We don't want to fuck up normal campaign)
+	if (!h2mod->Server)
 	{
-		bcoop = true; // set coop mode to true because we're loading an SP map and we're trying to do so with the multiplayer engine mode set.
-	}
-
-	if (bcoop == true)
-	{
-	
-
-		DWORD game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
-		BYTE* coop_mode = (BYTE*)(game_globals + 0x2a4);
-		BYTE* engine_mode = (BYTE*)(game_globals + 8);
-		BYTE* garbage_collect = (BYTE*)(game_globals + 0xC);
-		*(engine_mode) = 1;
-		bcoop = true;
-
-		if (first_load == true)
+		if (!memcmp(quarntine_zone, (BYTE*)0x300017E0, 86) && *(engine_mode) == 2) // check the map and if we're loading a multiplayer game (We don't want to fuck up normal campaign)
 		{
-			*(garbage_collect) = 4; // This is utterly broken and causes weird issues when other players start joining.
-		}
-		else
-		{
-			*(garbage_collect) = 1; // This has to be left at 5 for it to work, for some reason after the first time the host loads it seems to resolve some issues with weapons creation.
-			first_load = false;
+			bcoop = true; // set coop mode to true because we're loading an SP map and we're trying to do so with the multiplayer engine mode set.
 		}
 
+		if (bcoop == true)
+		{
+
+
+			DWORD game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
+			BYTE* coop_mode = (BYTE*)(game_globals + 0x2a4);
+			BYTE* engine_mode = (BYTE*)(game_globals + 8);
+			BYTE* garbage_collect = (BYTE*)(game_globals + 0xC);
+			*(engine_mode) = 1;
+			bcoop = true;
+
+			if (first_load == true)
+			{
+				*(garbage_collect) = 4; // This is utterly broken and causes weird issues when other players start joining.
+			}
+			else
+			{
+				*(garbage_collect) = 1; // This has to be left at 5 for it to work, for some reason after the first time the host loads it seems to resolve some issues with weapons creation.
+				first_load = false;
+			}
+
+		}
 	}
 #pragma endregion
 
@@ -1404,7 +1536,7 @@ int __cdecl OnMapLoad(int a1)
 
 bool __cdecl OnPlayerSpawn(int a1)
 {
-	//TRACE_GAME("OnPlayerSpawn(a1: %08X)", a1);
+	TRACE_GAME("OnPlayerSpawn(a1: %08X)", a1);
 
 	int PlayerIndex = a1 & 0x000FFFF;
 
@@ -1412,27 +1544,34 @@ bool __cdecl OnPlayerSpawn(int a1)
 	if(b_Infection)
 		inf->PreSpawn(PlayerIndex);
 #pragma endregion
+	
+	BYTE* coop_mode;
 
+	if (!h2mod->Server)
+	{
 #pragma region COOP Fixes
-	/* hacky coop fixes*/
-	
-	DWORD game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
-	BYTE* garbage_collect = (BYTE*)(game_globals + 0xC);
-	BYTE* coop_mode = (BYTE*)(game_globals + 0x2a4);
-	BYTE* engine_mode = (BYTE*)(game_globals + 8);
+		/* hacky coop fixes*/
 
-	if (bcoop == true)
-	{
-		*(coop_mode) = 1; // Turn coop mode on before spawning the player, maybe this fixes their weapon and biped or something idk?
-						  // Going to have to reverse the engine simulation function for weapon creation further.
+		DWORD game_globals = *(DWORD*)(((char*)h2mod->GetBase()) + 0x482D3C);
+		BYTE* garbage_collect = (BYTE*)(game_globals + 0xC);
+		BYTE* coop_mode = (BYTE*)(game_globals + 0x2a4);
+		BYTE* engine_mode = (BYTE*)(game_globals + 8);
+
+		if (bcoop == true)
+		{
+			*(coop_mode) = 1; // Turn coop mode on before spawning the player, maybe this fixes their weapon and biped or something idk?
+							  // Going to have to reverse the engine simulation function for weapon creation further.
+		}
 	}
-	
-	int ret =  pspawn_player(a1); // This handles player spawning for both multiplayer and sinlgeplayer/coop careful with it.
 
-	/* More hacky coop fixes*/
-	if (bcoop == true)
+		int ret = pspawn_player(a1); // This handles player spawning for both multiplayer and sinlgeplayer/coop careful with it.
+	if(!h2mod->Server)
 	{
-		*(coop_mode) = 0; // Turn it back off, sometimes it causes crashes if it's self on we only need it when we're spawning players.
+		/* More hacky coop fixes*/
+		if (bcoop == true)
+		{
+			*(coop_mode) = 0; // Turn it back off, sometimes it causes crashes if it's self on we only need it when we're spawning players.
+		}
 	}
 #pragma endregion
 
@@ -1449,28 +1588,6 @@ bool __cdecl OnPlayerSpawn(int a1)
 
 	return ret;
 }
-
-
-/* Really need some hooks here,
-	??_7c_simulation_game_engine_player_entity_definition@@6B@ dd offset sub_11D0018
-	
-	This area will give us tons of info on the game_engine player, including object index and such linked to secure-address, xnaddr, and wether or not they're host.
-
-
-	; class c_simulation_game_statborg_entity_definition: c_simulation_entity_definition;   (#classinformer)
-	We'll want to hook this for infection, it handles updating teams it seems we could possibly call it after updating a team to push it to all people.
-
-	; class c_simulation_damage_section_response_event_definition: c_simulation_event_definition;   (#classinformer)
-	Damage handlers... could help for quake sounds and other things like detecting assisnations (We'll probably find this when we track medals in-game as well)
-
-	; class c_simulation_unit_entity_definition: c_simulation_object_entity_definition, c_simulation_entity_definition;   (#classinformer)
-	Ofc we want unit handling.
-
-	; class c_simulation_slayer_engine_globals_definition: c_simulation_game_engine_globals_definition, c_simulation_entity_definition;   (#classinformer)
-	Should take a look here for extended functions on scoring chances are we're already hooking one of these.
-
-*/
-
 
 extern SOCKET game_sock;
 extern SOCKET game_sock_1000;
@@ -1631,325 +1748,31 @@ void H2MOD::ApplyHooks()
 		show_download_dialog_method = (show_download_dialog)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x24499F, (BYTE*)showDownloadDialog, 6);
 		VirtualProtect(show_download_dialog_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 	}
-	
-
-
-
-}
-
-
-
-DWORD WINAPI NetworkThread(LPVOID lParam)
-{
-	TRACE_GAME("[h2mod-network] NetworkThread Initializing");
-
-	if (comm_socket == INVALID_SOCKET)
-	{
-		comm_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
-		if (comm_socket == INVALID_SOCKET)
-		{
-			TRACE_GAME("[h2mod-network] Socket is invalid even after socket()");
-		}
-
-		SOCKADDR_IN RecvStruct;
-		RecvStruct.sin_port = htons(((short)g_port) + 7);
-		RecvStruct.sin_addr.s_addr = htonl(INADDR_ANY);
-
-		RecvStruct.sin_family = AF_INET;
-
-		if (bind(comm_socket, (const sockaddr*)&RecvStruct, sizeof RecvStruct) == -1)
-		{
-			TRACE_GAME("[h2mod-network] Would not bind socket!");
-		}
-
-		DWORD dwTime = 20;
-
-		if (setsockopt(comm_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&dwTime, sizeof(dwTime)) < 0)
-		{
-			TRACE_GAME("[h2mod-network] Socket Error on register request");
-		}
-
-		TRACE_GAME("[h2mod-network] Listening on port: %i", ntohs(RecvStruct.sin_port));
-	}
 	else 
 	{
-		TRACE_GAME("[h2mod-network] socket already existed continuing without attempting bind...");
+		DWORD dwBack;
+		pspawn_player = (spawn_player)DetourFunc((BYTE*)this->GetBase() + 0x5DE4A, (BYTE*)OnPlayerSpawn, 6);
+		VirtualProtect(pspawn_player, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		pmap_initialize = (map_intialize)DetourFunc((BYTE*)this->GetBase() + 0x4E43C, (BYTE*)OnMapLoad, 10);
+		VirtualProtect(pmap_initialize, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		pupdate_player_score = (update_player_score)DetourClassFunc((BYTE*)this->GetBase() + 0x8C84C, (BYTE*)OnPlayerScore, 12);
+		VirtualProtect(pupdate_player_score, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		pplayer_death = (player_death)DetourFunc((BYTE*)this->GetBase() + 0x152ED4, (BYTE*)OnPlayerDeath, 9);
+		VirtualProtect(pplayer_death, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
 	}
-
 	
 
 
 
-	
-	TRACE_GAME("[h2mod-network] Are we host? %i", isHost);
-	
-	NetworkActive = true;
-
-	if(isHost)
-	{
-		TRACE_GAME("[h2mod-network] We're host waiting for a authorization packet from joining clients...");
-
-		while (1)
-		{
-	
-			if (NetworkActive == false)
-			{
-				isHost = false;
-				Connected = false;
-				ThreadCreated = false;
-				H2MOD_Network = 0;
-				TRACE_GAME("[h2mod-network] Killing host thread NetworkActive == false");
-				return 0;
-			}
-			sockaddr_in SenderAddr;
-			int SenderAddrSize = sizeof(SenderAddr);
-
-			memset(NetworkData, 0x00, 255);
-			int recvresult = recvfrom(comm_socket, NetworkData, 255, 0, (sockaddr*)&SenderAddr, &SenderAddrSize);
-
-			if (h2mod->NetworkPlayers.size() > 0)
-			{
-				auto it = h2mod->NetworkPlayers.begin();
-				while (it != h2mod->NetworkPlayers.end())
-				{
-					if (it->second == 0)
-					{
-						TRACE_GAME("[h2mod-network] Deleting player %ws as their value was set to 0", it->first->PlayerName);
-
-						if (it->first->PacketsAvailable == true)
-							delete[] it->first->PacketData; // Delete packet data if there is any.
-
-
-						delete[] it->first; // Clear NetworkPlayer object.
-
-						it = h2mod->NetworkPlayers.erase(it);
-
-
-					}
-					else
-					{
-						if (it->first->PacketsAvailable == true) // If there's a packet available we set this to true already.
-						{
-							TRACE_GAME("[h2mod-network] Sending player %ws data", it->first->PlayerName);
-
-							SOCKADDR_IN QueueSock;
-							QueueSock.sin_port = it->first->port; // We can grab the port they connected from.
-							QueueSock.sin_addr.s_addr = it->first->addr; // Address they connected from.
-							QueueSock.sin_family = AF_INET;
-
-							sendto(comm_socket, it->first->PacketData, it->first->PacketSize, 0, (sockaddr*)&QueueSock, sizeof(QueueSock)); // Just send the already serialized data over the socket.
-
-							it->first->PacketsAvailable = false;
-							delete[] it->first->PacketData; // Delete packet data we've sent it already.
-						}
-						it++;
-					}
-				}
-			}
-		
-
-			if (recvresult > 0)
-			{
-				bool already_authed = false;
-				H2ModPacket recvpak;
-				recvpak.ParseFromArray(NetworkData, recvresult);
-
-
-				if (recvpak.has_type())
-				{
-					switch (recvpak.type())
-					{
-						case H2ModPacket_Type_authorize_client:
-							TRACE_GAME("[h2mod-network] Player Connected!");
-							if (recvpak.has_h2auth())
-							{
-								if (recvpak.h2auth().has_name())
-								{
-									wchar_t* PlayerName = new wchar_t[36];
-									memset(PlayerName, 0x00, 36);
-									wcscpy(PlayerName, (wchar_t*)recvpak.h2auth().name().c_str());
-									
-
-									for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it)
-									{
-										if (wcscmp(it->first->PlayerName, PlayerName) == 0)
-										{
-
-											TRACE_GAME("[h2mod-network] This player ( %ws ) was already connected, sending them another packet letting them know they're authed already.",PlayerName);
-
-											char* SendBuf = new char[recvpak.ByteSize()];
-											recvpak.SerializeToArray(SendBuf, recvpak.ByteSize());
-
-											sendto(comm_socket, SendBuf, recvpak.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
-
-
-											already_authed = true;
-
-											delete[] SendBuf;
-										}
-									}
-
-									if (already_authed == false)
-									{
-										NetworkPlayer *nPlayer = new NetworkPlayer;
-
-
-										TRACE_GAME("[h2mod-network] PlayerName: %ws", PlayerName);
-										TRACE_GAME("[h2mod-network] IP:PORT: %08X:%i", SenderAddr.sin_addr.s_addr, ntohs(SenderAddr.sin_port));
-
-										nPlayer->addr = SenderAddr.sin_addr.s_addr;
-										nPlayer->port = SenderAddr.sin_port;
-										nPlayer->PlayerName = PlayerName;
-										nPlayer->secure = recvpak.h2auth().secureaddr();
-										h2mod->NetworkPlayers[nPlayer] = 1;
-
-										char* SendBuf = new char[recvpak.ByteSize()];
-										recvpak.SerializeToArray(SendBuf, recvpak.ByteSize());
-
-										sendto(comm_socket, SendBuf, recvpak.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
-
-										delete[] SendBuf;
-									}
-								}
-							}
-						break;
-
-						case H2ModPacket_Type_h2mod_ping:
-							H2ModPacket pongpak;
-							pongpak.set_type(H2ModPacket_Type_h2mod_pong);
-
-							char* pongdata = new char[pongpak.ByteSize()];
-							pongpak.SerializeToArray(pongdata, pongpak.ByteSize());
-							sendto(comm_socket, pongdata, recvpak.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
-
-							delete[] pongdata;
-						break;
-
-					}
-				}
-
-				Sleep(500);
-			}
-		}
-	}
-	else
-	{
-		Connected = false;
-		TRACE_GAME("[h2mod-network] We're a client connecting to server...");
-
-		
-		SOCKADDR_IN SendStruct;
-		SendStruct.sin_port = htons(ntohs(join_game_xn.wPortOnline) + 7);
-		SendStruct.sin_addr.s_addr = join_game_xn.ina.s_addr;
-		SendStruct.sin_family = AF_INET;
-		
-		TRACE_GAME("[h2mod-network] Connecting to server on %08X:%i", SendStruct.sin_addr.s_addr, ntohs(SendStruct.sin_port));
-
-		H2ModPacket h2pak;
-		h2pak.set_type(H2ModPacket_Type_authorize_client);
-
-		h2mod_auth *authpak = h2pak.mutable_h2auth();
-		authpak->set_name((char*)h2mod->get_local_player_name(),34);
-		authpak->set_secureaddr(User.LocalSec);
-
-		char* SendBuf = new char[h2pak.ByteSize()];
-		h2pak.SerializeToArray(SendBuf, h2pak.ByteSize());
-
-		sendto(comm_socket, SendBuf, h2pak.ByteSize(), 0, (SOCKADDR*)&SendStruct, sizeof(SendStruct));
-
-		while (1)
-		{
-			if (NetworkActive == false)
-			{
-				isHost = false;
-				Connected = false;
-				ThreadCreated = false;
-				H2MOD_Network = 0;
-				TRACE_GAME("[h2mod-network] Networkactive == false ending client thread.");
-				return 0;
-			}
-
-			if (Connected == false) 
-			{
-				TRACE_GAME("[h2mod-network] Client - we're not connected re-sending our auth..");
-				sendto(comm_socket, SendBuf, h2pak.ByteSize(), 0, (SOCKADDR*)&SendStruct, sizeof(SendStruct));
-			}
-
-			sockaddr_in SenderAddr;
-			int SenderAddrSize = sizeof(SenderAddr);
-
-			memset(NetworkData, 0x00, 255);
-			int recvresult = recvfrom(comm_socket, NetworkData, 255, 0, (sockaddr*)&SenderAddr, &SenderAddrSize);
-			
-			if (recvresult > 0)
-			{
-				H2ModPacket recvpak;
-				recvpak.ParseFromArray(NetworkData, recvresult);
-
-				if (recvpak.has_type())
-				{
-					switch (recvpak.type())
-					{
-						case H2ModPacket_Type_authorize_client:
-						
-							if (Connected == false)
-							{
-								TRACE("[h2mod-network] Got the auth packet back!, We're connected!");
-								Connected = true;
-							}
-					
-						break;
-
-						case H2ModPacket_Type_set_player_team:
-							
-							if (recvpak.has_h2_set_player_team())
-							{
-
-								BYTE TeamIndex = recvpak.h2_set_player_team().team();
-
-								TRACE_GAME("[h2mod-network] Got a set team request from server! TeamIndex: %i", TeamIndex);
-								h2mod->set_local_team_index(TeamIndex);
-							}
-
-						break;
-
-						case H2ModPacket_Type_set_unit_grenades:
-							if (recvpak.has_set_grenade())
-							{
-								BYTE type = recvpak.set_grenade().type();
-								BYTE count = recvpak.set_grenade().count();
-								BYTE pIndex = recvpak.set_grenade().pindex();
-
-								h2mod->set_local_grenades(type, count, pIndex);
-							}
-						break;
-					}
-				}
-
-			}
-
-			if (Connected == true)
-			{
-				H2ModPacket pack;
-				pack.set_type(H2ModPacket_Type_h2mod_ping);
-
-				char* SendBuf = new char[pack.ByteSize()];
-				pack.SerializeToArray(SendBuf, pack.ByteSize());
-
-				sendto(comm_socket, SendBuf, pack.ByteSize(), 0, (SOCKADDR*)&SendStruct, sizeof(SendStruct));
-
-				delete[] SendBuf;
-			}
-
-
-			Sleep(500);
-		}
-		
-	}
-
-	return 0;
 }
+
+
+
+
 
 DWORD WINAPI Thread1( LPVOID lParam )
 {
@@ -1979,19 +1802,22 @@ DWORD WINAPI Thread1( LPVOID lParam )
 void H2MOD::Initialize()
 {
 	
-	if (GetModuleHandleA("H2Server.exe"))
+	if (GetModuleHandle(L"H2Server.exe"))
 	{
-		this->Base = (DWORD)GetModuleHandleA("H2Server.exe");
+		this->Base = (DWORD)GetModuleHandle(L"H2Server.exe");
 		this->Server = TRUE;
+		TRACE_GAME("H2MOD - We're running on a server..");
 	}
 	else
 	{
-		this->Base = (DWORD)GetModuleHandleA("halo2.exe");
+		this->Base = (DWORD)GetModuleHandle(L"halo2.exe");
 		this->Server = FALSE;
 
 
 		std::thread SoundT(SoundThread);
 		SoundT.detach();
+
+		TRACE_GAME("H2MOD - We're running on a client..");
 	}
 
 	TRACE_GAME("H2MOD - Initialized v0.1a");
