@@ -23,8 +23,6 @@ typedef LONG (WINAPI* WINVERIFYTRUST) (
 	HWND hwnd, GUID *pgActionID, LPVOID pWVTData );
 
 
-
-
 CREATEFILE pCreateFileW = NULL;
 WINVERIFYTRUST pWinVerifyTrust = NULL;
 
@@ -107,7 +105,6 @@ static HANDLE WINAPI DetourCreateFileW( LPCTSTR lpFileName, DWORD dwDesiredAcces
 
 
 
-
 static LONG WINAPI DetourWinVerifyTrust( HWND hwnd, GUID *pgActionID, LPVOID pWVTData )
 {
 	// xlive.dll verified
@@ -151,7 +148,5 @@ void Detour()
 	MH_CreateHook( (VOID *) ( *addr ), DetourWinVerifyTrust, reinterpret_cast<void**>(&pWinVerifyTrust) );
 	MH_QueueEnableHook( (VOID *) ( *addr ) );
 
-
-
-	MH_ApplyQueued();
+	MH_ApplyQueued(); 
 }

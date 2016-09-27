@@ -13,6 +13,7 @@
 #include <h2mod.pb.h>
 #include <Mmsystem.h>
 #include <thread>
+#include <Dpapi.h>
 
 //#include "H2Security.h"
 //#include "H2SecurityMod.h"
@@ -63,13 +64,28 @@ extern int MasterState;
 
 
 #pragma region engine calls
-int __cdecl call_get_object(signed int object_datum_index, int object_type)
+/*
+char __cdecl add_object_to_sync(int game_state_object_datum)
+1B8D14
+
+*/
+
+bool __cdecl call_add_object_to_sync(int gamestate_object_datum)
+{
+	typedef int(__cdecl  *add_object_to_sync)(int gamestate_object_datum);
+
+	add_object_to_sync p_add_object_to_sync = (add_object_to_sync)((char*)h2mod->GetBase() + 0x1B8D14);
+
+	return p_add_object_to_sync(gamestate_object_datum);
+}
+
+int __cdecl call_get_object(unsigned int object_datum_index, int object_type)
 {
 	//TRACE_GAME("call_get_object( object_datum_index: %08X, object_type: %08X )", object_datum_index, object_type);
 
 	if (h2mod->Server)
 	{
-		typedef int(__cdecl *get_object)(signed int object_datum_index, int object_type);
+		typedef int(__cdecl *get_object)(unsigned int object_datum_index, int object_type);
 
 		get_object pget_object = (get_object)((char*)h2mod->GetBase() + 0x11F3A6);
 		return pget_object(object_datum_index, object_type);
@@ -1671,6 +1687,40 @@ int __cdecl connect_establish_write(void* a1, int a2, int a3)
 	return pconnect_establish_write(a1, a2, a3);
 }
 
+typedef BOOL(WINAPI* CRYPTPROTECTDATA) (
+	DATA_BLOB *pDataIn, LPCWSTR szDataDescr, DATA_BLOB *pOptionalEntropy,
+	PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT *pPromptStruct, DWORD dwFlags, DATA_BLOB *pDataOut
+	);
+
+typedef BOOL(WINAPI* CRYPTUNPROTECTDATA) (
+	DATA_BLOB *pDataIn, LPCWSTR *ppszDataDescr, DATA_BLOB *pOptionalEntropy,
+	PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT *pPromptStruct, DWORD dwFlags, DATA_BLOB *pDataOut
+	);
+
+CRYPTPROTECTDATA pCryptProtectData;
+CRYPTUNPROTECTDATA pCryptUnprotectData;
+
+
+
+BOOL WINAPI DetourCryptUnProtectData(DATA_BLOB *pDataIn, LPCWSTR *ppszDataDescr, DATA_BLOB *pOptionalEntropy, PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT *pPromptStruct, DWORD dwFlags, DATA_BLOB *pDataOut)
+{
+
+	pDataOut->cbData = pDataIn->cbData;
+	pDataOut->pbData = pDataIn->pbData;
+
+	return 1;
+	//return pCryptUnprotectData(pDataIn, ppszDataDescr, pOptionalEntropy, pvReserved, pPromptStruct, dwFlags, pDataOut);
+}
+
+BOOL WINAPI DetourCryptProtectData(DATA_BLOB *pDataIn, LPCWSTR szDataDescr, DATA_BLOB *pOptionalEntropy, PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT *pPromptStruct, DWORD dwFlags, DATA_BLOB *pDataOut)
+{
+	pDataOut->cbData = pDataIn->cbData;
+	pDataOut->pbData = pDataIn->pbData;
+
+	return 1;
+}
+
+
 
 void H2MOD::ApplyHooks()
 {
@@ -1682,6 +1732,13 @@ void H2MOD::ApplyHooks()
 		TRACE_GAME("Applying client hooks...");
 		/* These hooks are only built for the client, don't enable them on the server! */
 		DWORD dwBack;
+
+
+		pCryptProtectData = (CRYPTPROTECTDATA)DetourFunc((BYTE*)&CryptProtectData, (BYTE*)DetourCryptProtectData, 5);
+		VirtualProtect(pCryptProtectData, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		pCryptUnprotectData = (CRYPTUNPROTECTDATA)DetourFunc((BYTE*)&CryptUnprotectData, (BYTE*)DetourCryptUnProtectData, 5);
+		VirtualProtect(pCryptUnprotectData, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		pjoin_game = (tjoin_game)DetourClassFunc((BYTE*)this->GetBase() + 0x1CDADE, (BYTE*)join_game, 13);
 		VirtualProtect(pjoin_game, 4, PAGE_EXECUTE_READWRITE, &dwBack);

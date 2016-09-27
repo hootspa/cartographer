@@ -70,8 +70,9 @@ enum Weapon
 };
 
 signed int call_object_create(int a1, bool bClone);
-int __cdecl call_get_object(signed int object_datum_index, int object_type);
+int __cdecl call_get_object(unsigned int object_datum_index, int object_type);
 int __cdecl call_unit_reset_equipment(int unit_datum_index);
+bool __cdecl call_add_object_to_sync(int gamestate_object_datum);
 int __cdecl call_hs_object_destroy(int object_datum_index);
 signed int __cdecl call_unit_inventory_next_weapon(unsigned short unit_datum_index);
 bool __cdecl call_assign_equipment_to_unit(int uint, int object_index, short unk);
