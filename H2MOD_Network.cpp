@@ -24,6 +24,7 @@ SOCKET comm_socket = INVALID_SOCKET;
 char* NetworkData = new char[255];
 
 
+
 DWORD WINAPI NetworkThread(LPVOID lParam)
 {
 	TRACE_GAME("[h2mod-network] NetworkThread Initializing");
@@ -262,6 +263,10 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 
 		auto last_ping = std::chrono::high_resolution_clock::now();
 		auto last_connect_attempt = std::chrono::high_resolution_clock::now();
+		auto ping_sent = std::chrono::high_resolution_clock::now();
+		bool waiting_for_pong = false;
+		auto pong_received = ping_sent;
+		__int64 ping_ms = 0;
 
 		while (true)
 		{
@@ -306,6 +311,11 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 				
 				last_ping = std::chrono::high_resolution_clock::now();
 
+				if (!waiting_for_pong)
+				{
+					ping_sent = std::chrono::high_resolution_clock::now();
+					waiting_for_pong = true;
+				}
 			}
 
 			sockaddr_in SenderAddr;
@@ -328,7 +338,15 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 						switch (recvpak.type())
 						{
 							case H2ModPacket_Type_h2mod_pong:
+								pong_received = std::chrono::high_resolution_clock::now();
+								ping_ms = std::chrono::duration_cast<std::chrono::milliseconds>(pong_received - ping_sent).count();
+								waiting_for_pong = false;
+
+								
+
 								TRACE_GAME("[h2mod-network] Got a pong packet back!");
+								TRACE_GAME("[h2mod-network] ping ms: %I64d", ping_ms);
+								
 							break;
 
 							case H2ModPacket_Type_authorize_client:

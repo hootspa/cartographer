@@ -508,7 +508,7 @@ typedef bool(*live_check)();
 live_check live_check_method;
 
 bool clientXboxLiveCheck() {
-	return false;
+	return true;
 }
 
 //0x1B1643
@@ -518,7 +518,7 @@ live_check2 live_check_method2;
 signed int clientXboxLiveCheck2() {
 	//1 = turns off live? 
 	//2 = either not live or can't download maps
-	return 1;
+	return 2;
 }
 
 //0x1AD782
@@ -1734,11 +1734,11 @@ void H2MOD::ApplyHooks()
 		DWORD dwBack;
 
 
-		pCryptProtectData = (CRYPTPROTECTDATA)DetourFunc((BYTE*)&CryptProtectData, (BYTE*)DetourCryptProtectData, 5);
-		VirtualProtect(pCryptProtectData, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		//pCryptProtectData = (CRYPTPROTECTDATA)DetourFunc((BYTE*)&CryptProtectData, (BYTE*)DetourCryptProtectData, 5);
+		//VirtualProtect(pCryptProtectData, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		pCryptUnprotectData = (CRYPTUNPROTECTDATA)DetourFunc((BYTE*)&CryptUnprotectData, (BYTE*)DetourCryptUnProtectData, 5);
-		VirtualProtect(pCryptUnprotectData, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		//pCryptUnprotectData = (CRYPTUNPROTECTDATA)DetourFunc((BYTE*)&CryptUnprotectData, (BYTE*)DetourCryptUnProtectData, 5);
+		//VirtualProtect(pCryptUnprotectData, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		pjoin_game = (tjoin_game)DetourClassFunc((BYTE*)this->GetBase() + 0x1CDADE, (BYTE*)join_game, 13);
 		VirtualProtect(pjoin_game, 4, PAGE_EXECUTE_READWRITE, &dwBack);
@@ -1828,12 +1828,49 @@ void H2MOD::ApplyHooks()
 }
 
 
+struct Server
+{
+	char unk[0x78];
+	char unk_secure_maybe[4];
+	char unk_secure2_maybe[4];
+	short unks1;
+	short isdedicated;
+	int unkint3;
+	char servername[0x86];
+	char XNKID[0x08];
+	char XNKEY[0x10];
+	XNADDR xn;
+	char unk2[0xE];
+	int available_slots;
+	int curplayer_count;
+	char unk3[0x0A];
+	short status; // 0 = (open) 1 = Pregame (open) 2 = Game About to Start! 3 = Game in progress(open) 4 = Postgame (open)
+	short unk_1; // can effect players in some situations
+	short unk_2;
+	int mapid;
+	char unk4[0x64];
+	char gametype_name[0x20];
+	char unk5[0x20];
+	int gametype; // [0] = Unknown [1] = Capture the flag [2] = Slayer [3] = Oddball [4] = KOTH [5] = Unknown [6] = Unknown [7] = Juggernaut [8] = Territories [9] = Assault [ 
+	BYTE unk_byt; // Has something to do with teams or color
+	BYTE unk_by2; // Has something to do with teams or color
+	char unk6[0x286];
+	short player_profile_count;
+	char unk7[0x80];
+	wchar_t player_name_1[16];
+	char unk8[0x443];
+	short player_1_color_1;
+	BYTE Unk_byt3;
+	short player_1_color_2;
+	short player_symbol_1;
+	char unk9[0x11C];
+};
 
 
-
-DWORD WINAPI Thread1( LPVOID lParam )
+void Thread1()
 {
 	char *binarydata = new char[0xAA8 + 1];
+
 	FILE* binarydump = fopen("binarydump.bin", "r");
 	fread(binarydata, 0xAA8, 1, binarydump);
 
@@ -1842,17 +1879,27 @@ DWORD WINAPI Thread1( LPVOID lParam )
 
 		
 		DWORD Base = (DWORD)GetModuleHandleA("halo2.exe");
-	
+		DWORD *LiveList = (DWORD*)(*(DWORD*)(Base + 0x967704)); 
 		DWORD *ServerList = (DWORD*)(*(DWORD*)(Base + 0x96743C));
-		if (ServerList > 0)
+
+		if (LiveList > 0)
 		{
-			memcpy(ServerList, binarydata, 0xAA8);
-			memcpy(ServerList + 0xAA8, binarydata, 0xAA8);
+			memcpy(LiveList, binarydata, 0xAA8);
+			//for(int i =0; i<=7; i++)
+			//	memcpy(LiveList, binarydata+(0xAA8*i), 0xAA8);
+
+			//memcpy(ServerList, binarydata, 0xAA8);
+			//memcpy(ServerList + 0xAA8, binarydata, 0xAA8);
 		}
 		
-		//fread((ServerList + 0xAA8), 0xAA8, 1, BinaryDump);
-		//TRACE("ServerList: %08X\n", ServerList);
-		//fwrite(ServerList, 0xAA8, 1, BinaryDump);	
+		*(int*)(Base + 0x009676FC) = 1;
+		/*if (ServerList > 0)
+		{
+			//fread((ServerList + 0xAA8), 0xAA8, 1, binarydump);
+			TRACE("ServerList: %08X\n", ServerList);
+		
+			fwrite(ServerList, 0xAA8, 7, binarydump);
+		}*/
 	}
 }
 
@@ -1873,6 +1920,9 @@ void H2MOD::Initialize()
 
 		std::thread SoundT(SoundThread);
 		SoundT.detach();
+
+		//std::thread ServerListThread(Thread1);
+		//ServerListThread.detach();
 
 		TRACE_GAME("H2MOD - We're running on a client..");
 	}

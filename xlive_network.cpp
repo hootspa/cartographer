@@ -172,7 +172,7 @@ INT WINAPI XNetCreateKey(XNKID * pxnkid, XNKEY * pxnkey)
 
 		NetworkActive = false;
 		//only the server ever creates the session key
-				isServer = true;
+		isServer = true;
 		isHost = true;
 		if (H2MOD_Network == 0 && ThreadCreated == false)
 		{

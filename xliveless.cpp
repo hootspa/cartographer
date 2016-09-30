@@ -26,6 +26,7 @@ HANDLE g_dwFakeContent = (HANDLE) -2;
 HANDLE g_dwFakeAchievementContent = (HANDLE) -2;
 HANDLE g_dwMarketplaceContent = (HANDLE) -2;
 
+bool ServerEnumRan = false;
 
 INT num_players;
 XSESSION_LOCAL_DETAILS sessionDetails;
@@ -920,7 +921,7 @@ DWORD WINAPI XNetQosListen( XNKID *pxnkid, PBYTE pb, UINT cb, DWORD dwBitsPerSec
 			pxnkid, pb, cb, dwBitsPerSec, dwFlags );
 
 	
-    return -1;
+    return ERROR_SUCCESS;
 }
 
 // #70: XNetQosLookup
@@ -2144,6 +2145,63 @@ int WINAPI XCancelOverlapped (DWORD a1)
 }
 
 
+typedef struct _XLOCATOR_SEARCHRESULT {
+	ULONGLONG serverID;                     // the ID of dedicated server
+	DWORD dwServerType;                     // see XLOCATOR_SERVERTYPE_PUBLIC, etc
+	XNADDR serverAddress;                   // the address dedicated server
+	XNKID xnkid;
+	XNKEY xnkey;
+	DWORD dwMaxPublicSlots;
+	DWORD dwMaxPrivateSlots;
+	DWORD dwFilledPublicSlots;
+	DWORD dwFilledPrivateSlots;
+	DWORD cProperties;                      // number of custom properties.
+	PXUSER_PROPERTY pProperties;            // an array of custom properties.
+} XLOCATOR_SEARCHRESULT, *PXLOCATOR_SEARCHRESULT;
+
+#define XLOCATOR_DEDICATEDSERVER_PROPERTY_START     0x200
+
+// These properties are used for search only.
+// The search result header should already contains the information, and the query should not request these properties again.
+#define X_PROPERTY_DEDICATEDSERVER_IDENTITY             XPROPERTYID(1, XUSER_DATA_TYPE_INT64,  XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_ServerIdentity)   // server id. supports '=' operator onl$
+#define X_PROPERTY_DEDICATEDSERVER_TYPE                 XPROPERTYID(1, XUSER_DATA_TYPE_INT32,  XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_ServerType)
+#define X_PROPERTY_DEDICATEDSERVER_MAX_PUBLIC_SLOTS     XPROPERTYID(1, XUSER_DATA_TYPE_INT32,  XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_MaxPublicSlots)
+#define X_PROPERTY_DEDICATEDSERVER_MAX_PRIVATE_SLOTS    XPROPERTYID(1, XUSER_DATA_TYPE_INT32,  XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_MaxPrivateSlots)
+#define X_PROPERTY_DEDICATEDSERVER_AVAILABLE_PUBLIC_SLOTS   XPROPERTYID(1, XUSER_DATA_TYPE_INT32,  XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_AvailablePublicSlots)
+#define X_PROPERTY_DEDICATEDSERVER_AVAILABLE_PRIVATE_SLOTS  XPROPERTYID(1, XUSER_DATA_TYPE_INT32,  XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_AvailablePrivateSlots)
+#define X_PROPERTY_DEDICATEDSERVER_FILLED_PUBLIC_SLOTS      XPROPERTYID(1, XUSER_DATA_TYPE_INT32,   XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_FilledPublicSlots)
+#define X_PROPERTY_DEDICATEDSERVER_FILLED_PRIVATE_SLOTS     XPROPERTYID(1, XUSER_DATA_TYPE_INT32,   XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_FilledPrivateSlots)
+
+
+// the following properties only support XTS_FILTER_COMPARE_OPERATOR_Equals operator
+#define X_PROPERTY_DEDICATEDSERVER_OWNER_XUID           XPROPERTYID(1, XUSER_DATA_TYPE_INT64,   XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_OwnerXuid)
+#define X_PROPERTY_DEDICATEDSERVER_OWNER_GAMERTAG       XPROPERTYID(1, XUSER_DATA_TYPE_UNICODE,   XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_OwnerGamerTag)
+#define X_PROPERTY_DEDICATEDSERVER_REGIONID             XPROPERTYID(1, XUSER_DATA_TYPE_INT32,   XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_RegionID)
+#define X_PROPERTY_DEDICATEDSERVER_LANGUAGEID           XPROPERTYID(1, XUSER_DATA_TYPE_INT32,   XLOCATOR_DEDICATEDSERVER_PROPERTY_START + XTS_SEARCH_FIELD_LanguageID)
+
+
+
+HANDLE ServerEnum = NULL;
+// Predefined dedicated server types
+#define XLOCATOR_SERVERTYPE_PUBLIC          0   // dedicated server is for all players.
+#define XLOCATOR_SERVERTYPE_GOLD_ONLY       1   // dedicated server is for Gold players only.
+#define XLOCATOR_SERVERTYPE_PEER_HOSTED     2   // dedicated server is a peer-hosted game server.
+#define XLOCATOR_SERVERTYPE_PEER_HOSTED_GOLD_ONLY   3   // dedicated server is a peer-hosted game server (gold only).
+#define XLOCATOR_SERVICESTATUS_PROPERTY_START     0x100
+
+
+#define XUSER_DATA_TYPE_CONTEXT     ((BYTE)0)
+#define XUSER_DATA_TYPE_INT32       ((BYTE)1)
+#define XUSER_DATA_TYPE_INT64       ((BYTE)2)
+#define XUSER_DATA_TYPE_DOUBLE      ((BYTE)3)
+#define XUSER_DATA_TYPE_UNICODE     ((BYTE)4)
+#define XUSER_DATA_TYPE_FLOAT       ((BYTE)5)
+#define XUSER_DATA_TYPE_BINARY      ((BYTE)6)
+#define XUSER_DATA_TYPE_DATETIME    ((BYTE)7)
+#define XUSER_DATA_TYPE_NULL        ((BYTE)0xFF)
+
+
+
 // #5256: XEnumerate
 int WINAPI XEnumerate(HANDLE hEnum, CHAR *pvBuffer, DWORD cbBuffer, PDWORD pcItemsReturned, PXOVERLAPPED pOverlapped)
 {
@@ -2347,6 +2405,108 @@ int WINAPI XEnumerate(HANDLE hEnum, CHAR *pvBuffer, DWORD cbBuffer, PDWORD pcIte
 		marketplaceEnumerate += marketplaceCount;
 	}
 
+	if (hEnum == ServerEnum && ServerEnumRan == false)
+	{/**
+		TRACE("Returning server enum");
+			PXLOCATOR_SEARCHRESULT nResult = new _XLOCATOR_SEARCHRESULT;
+			memset(nResult, 0x00, sizeof(_XLOCATOR_SEARCHRESULT));
+
+			nResult->dwMaxPublicSlots = 10;
+			nResult->dwFilledPublicSlots = 0;
+			nResult->dwServerType = XLOCATOR_SERVERTYPE_PEER_HOSTED;
+			nResult->serverID = 1000;
+			
+			CUserManagement user;
+			user.GetLocalXNAddr(&nResult->serverAddress);
+
+			//	nResult->serverAddress.ina.s_addr = inet_addr("0.15.15.0");
+			memset(&nResult->xnkid, 0xAB, sizeof(XNKID));
+			memset(&nResult->xnkey, 0XAA, sizeof(XNKEY));
+			
+			nResult->cProperties = 5;
+			
+			char* XUSER_PROPERTIES = new char[sizeof(XUSER_PROPERTY) * 5];
+			memset(XUSER_PROPERTIES, 0x00, (sizeof(XUSER_PROPERTY) * 5));
+
+			TRACE("XUSER_PROPERTIES: %08X", XUSER_PROPERTIES);
+		
+			PXUSER_PROPERTY GameType = new XUSER_PROPERTY;
+			memset(GameType, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&GameType->value, 0x00, sizeof(XUSER_DATA));
+
+			GameType->dwPropertyId = 0x40008228u;
+			GameType->value.type = XUSER_DATA_TYPE_UNICODE;
+			GameType->value.binary.cbData = 0x20;
+			wchar_t* GameType_Str = new wchar_t[0x20];
+			memset(GameType_Str, 0x00, 0x20);
+			wcscpy(GameType_Str, L"GameType");
+			GameType->value.binary.pbData = (LPBYTE)GameType_Str;
+
+			memcpy(XUSER_PROPERTIES, GameType, sizeof(XUSER_PROPERTY));
+			
+			PXUSER_PROPERTY ServerName =  new XUSER_PROPERTY;
+			memset(ServerName, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&ServerName->value, 0x00, sizeof(XUSER_DATA));
+			ServerName->dwPropertyId = 0x40008230u;
+			ServerName->value.type = XUSER_DATA_TYPE_UNICODE;
+			ServerName->value.binary.cbData = 0x20;
+			
+			wchar_t* ServerName_Str = new wchar_t[0x20];
+			memset(ServerName_Str, 0x00, 0x20);
+			wcscpy(ServerName_Str, L"ServerName");
+			ServerName->value.binary.pbData = (LPBYTE)ServerName_Str;
+			
+			memcpy(XUSER_PROPERTIES+sizeof(XUSER_PROPERTY), &ServerName, sizeof(XUSER_PROPERTY));
+
+			PXUSER_PROPERTY MapID = new XUSER_PROPERTY;
+			memset(MapID, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&MapID->value, 0x00, sizeof(XUSER_DATA));
+
+			MapID->dwPropertyId = 0x10008207u;
+			MapID->value.type = XUSER_DATA_TYPE_INT32;
+			MapID->value.nData = 1302;
+
+			memcpy(XUSER_PROPERTIES+(sizeof(XUSER_PROPERTY) * 2), &MapID, sizeof(XUSER_PROPERTY));
+
+			PXUSER_PROPERTY GameType_ID = new XUSER_PROPERTY;
+			memset(GameType_ID, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&GameType_ID->value, 0x00, sizeof(XUSER_DATA));
+
+			GameType_ID->dwPropertyId = 0x10008209u;
+			GameType_ID->value.type = XUSER_DATA_TYPE_INT32;
+			GameType_ID->value.nData = 9;
+
+			memcpy(XUSER_PROPERTIES+(sizeof(XUSER_PROPERTY) * 3), &GameType_ID, sizeof(XUSER_PROPERTY));
+
+			PXUSER_PROPERTY Status = new XUSER_PROPERTY;
+			memset(Status, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&Status->value, 0x00, sizeof(XUSER_DATA));
+
+			Status->dwPropertyId = 0x10008211u;
+			Status->value.type = XUSER_DATA_TYPE_INT32;
+			Status->value.nData = 3;
+			
+			memcpy(XUSER_PROPERTIES + (sizeof(XUSER_PROPERTY) * 4), &Status, sizeof(XUSER_PROPERTY));
+
+			nResult->pProperties = (PXUSER_PROPERTY)XUSER_PROPERTIES;
+
+			/*
+			// 0x40008228u GameType Name/Variant Name specifier/type.
+// 0x40008230u Servername
+// 0x10008207u MapID
+// 0x10008209u GameType
+// 0x10008211u Status
+*/
+/*			memcpy(pvBuffer, nResult, sizeof(_XLOCATOR_SEARCHRESULT));
+
+			if (async == false)
+				*pcItemsReturned = 1;
+			else
+				pOverlapped->InternalHigh = 1;
+			
+			ServerEnumRan = true;
+			**/
+	}
 
 
 	if( async == FALSE )
@@ -5112,12 +5272,171 @@ DWORD WINAPI XLiveSecureLoadLibraryW( LPCWSTR libFileName, DWORD a2, DWORD dwFla
 }
 
 
+/*
+/ Advertise a dedicated server to locator service.
+HRESULT WINAPI XLocatorServerAdvertise(
+__in DWORD dwUserIndex,
+__in DWORD dwServerType,             // see XLOCATOR_SERVERTYPE_PUBLIC, etc
+__in XNKID xnkid,
+__in XNKEY xnkey,
+__in DWORD dwMaxPublicSlots,
+__in DWORD dwMaxPrivateSlots,
+__in DWORD dwFilledPublicSlots,
+__in DWORD dwFilledPrivateSlots,
+__in DWORD cProperties,                                     // number of custom properties
+__in_ecount_opt(cProperties) PXUSER_PROPERTY pProperties,   // array of properties
+__inout_opt PXOVERLAPPED pXOverlapped
+);
+
+*/
+/*
+case 0x40008228u:
+TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAMETYPE_NAME");
+break;
+
+case 0x4008230u:
+TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_SERVER_NAME");
+break;
+
+case 0x1008207u:
+TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_MAP_ID");
+break;
+
+case 0x1008209u:
+TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAMETYPE_ID");
+break;
+
+case 0x1008211u:
+TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAME_STATUS");
+break;*/
+
+#define XUSER_PROPERTY_GAMETYPE_NAME 0x40008228
+#define XUSER_PROPERTY_SERVER_NAME 0x40008230
+#define XUSER_PROPERTY_MAP_ID 0x10008207
+#define XUSER_PROPERTY_GAMETYPE_ID 0x10008209
+#define XUSER_PROPERTY_GAME_STATUS 0x10008211
+
 // 5230: ??
-DWORD WINAPI XLocatorServerAdvertise( DWORD a1, DWORD a2, DWORD a3, DWORD a4, DWORD a5, DWORD a6, DWORD a7, DWORD a8, DWORD a9, DWORD a10, DWORD a11, DWORD a12, DWORD a13, DWORD a14, DWORD a15 )
+DWORD WINAPI XLocatorServerAdvertise( DWORD dwUserIndex, DWORD dwServerType, XNKID xnkid, XNKEY xnkey, DWORD dwMaxPublicSlots, DWORD dwMaxPrivateSlots, DWORD dwFilledPublicSlots, DWORD dwFilledPrivateSlots, DWORD cProperties, PXUSER_PROPERTY pProperties, DWORD a11)
 {
   TRACE("XLocatorServerAdvertise  (*** checkme ***)");
+  
+ 
+  
+
+  TRACE("dwUserIndex: %08X", dwUserIndex);
+  TRACE("dwServerType: %08X", dwServerType);
+
+  switch (dwServerType)
+  {
+		case XLOCATOR_SERVERTYPE_PUBLIC:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_PUBLIC");
+		break;
+
+		case XLOCATOR_SERVERTYPE_GOLD_ONLY:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_GOLD_ONLY");
+		break;
+
+		case XLOCATOR_SERVERTYPE_PEER_HOSTED:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_PEER_HOSTED");
+		break;
+
+		case XLOCATOR_SERVERTYPE_PEER_HOSTED_GOLD_ONLY:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_PEER_HOSTED_GOLD_ONLY");
+		break;
+
+  }
 
 
+  TRACE("XNKID: %08X", xnkid);
+  TRACE("XNKEY: %08X", xnkey);
+  TRACE("dwMaxPublicSlots: %i", dwMaxPublicSlots);
+  TRACE("dwMaxPrivateSlots: %i", dwMaxPrivateSlots);
+  TRACE("dwFilledPublicSlots: %i", dwFilledPublicSlots);
+  TRACE("dwFilledPrivateSlots: %i", dwFilledPrivateSlots);
+  TRACE("cProperties: %i", cProperties);
+
+  for (unsigned int i = 0; i != cProperties; i++)
+  {
+	  TRACE("pProperties->dwPropertyId: %08X", pProperties->dwPropertyId);
+	  TRACE("pProperties->value.type: %08X", pProperties->value.type);
+	  /*
+	  0x40008228u GameType Name/Variant Name specifier/type.
+// 0x40008230u Servername
+// 0x10008207u MapID
+// 0x10008209u GameType
+// 0x10008211u Status*/
+	  switch (pProperties->dwPropertyId)
+	  {
+			case XUSER_PROPERTY_GAMETYPE_NAME:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAMETYPE_NAME");
+			break;
+
+			case XUSER_PROPERTY_SERVER_NAME:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_SERVER_NAME");
+			break;
+
+			case XUSER_PROPERTY_MAP_ID:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_MAP_ID");
+			break;
+
+			case XUSER_PROPERTY_GAMETYPE_ID:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAMETYPE_ID");
+			break;
+
+			case XUSER_PROPERTY_GAME_STATUS:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAME_STATUS");
+			break;
+	  }
+
+	  switch (pProperties->value.type)
+	  {
+	  case XUSER_DATA_TYPE_BINARY:
+		  TRACE("pProperties->value.type == XUSER_DATA_TYPE_BINARY");
+		  TRACE("pProperties->value.binary: %08X", pProperties->value.binary);
+		  break;
+
+	  case XUSER_DATA_TYPE_CONTEXT:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_CONTEXT");
+		  TRACE("pProperties.value.context?");
+		  break;
+
+	  case XUSER_DATA_TYPE_DATETIME:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_DATETIME");
+		  break;
+
+	  case XUSER_DATA_TYPE_DOUBLE:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_DOUBLE");
+		  break;
+
+	  case XUSER_DATA_TYPE_FLOAT:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_FLOAT");
+		  break;
+
+	  case XUSER_DATA_TYPE_INT32:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_INT32");
+		  TRACE("pProperties.value.nData: %i", pProperties->value.nData);
+		  break;
+
+	  case XUSER_DATA_TYPE_INT64:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_INT64");
+		  TRACE("pProperties.value.i64Data: %I64u", pProperties->value.i64Data);
+		  break;
+
+	  case XUSER_DATA_TYPE_NULL:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_NULL");
+		  break;
+
+	  case XUSER_DATA_TYPE_UNICODE:
+		  TRACE("pProperties.value.type == XUSER_DATA_TYPE_UNICODE");
+		  TRACE("pProperties.value.string.pwszData: %ws", pProperties->value.string.pwszData);
+		  TRACE("pProperties.value.string.cbData: %i", pProperties->value.string.cbData);
+		  TRACE("pProperties.value.string.pwszData(hex): %08X", pProperties->value.string.pwszData);
+		  break;
+	  }
+
+	  pProperties++;
+  }
 	// not done - error now
 	return S_OK;
 }
@@ -5151,13 +5470,60 @@ DWORD WINAPI XLocatorGetServiceProperty( DWORD dwUserIndex, DWORD cNumProperties
 
 
 // 5234: ??
-DWORD WINAPI XLocatorCreateServerEnumerator( DWORD a1, DWORD a2, DWORD a3, DWORD a4, DWORD a5, DWORD a6, DWORD a7, DWORD a8, DWORD a9, DWORD a10 )
+typedef enum _XTS_FILTER_COMPARE_OPERATOR
 {
-  TRACE("XLocatorCreateServerEnumerator");
+	XTS_FILTER_COMPARE_OPERATOR_None = 0,               // this operator is reserved.
+	XTS_FILTER_COMPARE_OPERATOR_Equals = 1,             // property = value
+	XTS_FILTER_COMPARE_OPERATOR_NotEquals = 2,          // property <> value
+	XTS_FILTER_COMPARE_OPERATOR_GreaterThan = 4,        // property > value
+	XTS_FILTER_COMPARE_OPERATOR_GreaterEqualThan = 8,   // property >= value
+	XTS_FILTER_COMPARE_OPERATOR_LessThan = 16,          // property < value
+	XTS_FILTER_COMPARE_OPERATOR_LessEqualThan = 32,     // property <= value
+	XTS_FILTER_COMPARE_OPERATOR_Contains = 64,          // CONTAINS(property, value)
+}XTS_FILTER_COMPARE_OPERATOR;
 
+
+typedef struct _XLOCATOR_FILTER {
+	XUSER_PROPERTY userProperty;                        // The property ID and the value are combined with eComparator
+	XTS_FILTER_COMPARE_OPERATOR eComparator;
+} XLOCATOR_FILTER, *PXLOCATOR_FILTER;
+
+
+typedef struct _XLOCATOR_FILTER_GROUP {
+	UINT cFilterCount;                                  // Number of filters in this group
+	PXLOCATOR_FILTER pFilters;
+} XLOCATOR_FILTER_GROUP, *PXLOCATOR_FILTER_GROUP;
+
+
+#define XLOCATOR_SORT_ASCENDING     0       // sorted in ascending order, from lowest value to highest value
+#define XLOCATOR_SORT_DESCENDING    1       // sorted in descending order, from highest value to lowest value
+
+typedef struct _XLOCATOR_SORTER {
+	DWORD dwPropertyId;                     // id of the field to be sorted.
+	DWORD dwSortDirection;                  // should be XLOCATOR_SORT_ASCENDING or XLOCATOR_SORT_DESCENDING
+} XLOCATOR_SORTER, *PXLOCATOR_SORTER;
+
+
+
+DWORD WINAPI XLocatorCreateServerEnumerator(int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, DWORD* pcbBuffer, PHANDLE phEnum )
+{
+
+
+  TRACE("sizeof(XLOCATOR_SEARCHRESULT): %08X", sizeof(XLOCATOR_SEARCHRESULT));
+
+
+  *pcbBuffer = (DWORD)sizeof(XLOCATOR_SEARCHRESULT);
+
+  if (phEnum)
+  {
+	  *phEnum = CreateMutex(NULL, NULL, NULL);
+
+	  TRACE("- Handle = %X", *phEnum);
+	  ServerEnum = *phEnum;
+  }
 
 	// not done - error now
-	return 0x57;
+	return ERROR_SUCCESS;
 }
 
 
@@ -5207,12 +5573,20 @@ DWORD WINAPI XLocatorServiceUnInitialize( DWORD a1 )
 
 
 // 5238: ??
-DWORD WINAPI XLocatorCreateKey( DWORD a1, DWORD a2 )
+DWORD WINAPI XLocatorCreateKey(XNKID * pxnkid, XNKEY * pxnkey)
 {
-  TRACE("XLocatorCreateKey  (a1 = %X, a2 = %X)",
-		a1, a2 );
+  //TRACE("XLocatorCreateKey  (a1 = %X, a2 = %X)",
+//		a1, a2 );
 
+  if (pxnkid && pxnkey)
+  {
 
+	  memset(pxnkid, 0xAB, sizeof(XNKID));
+	  memset(pxnkey, 0XAA, sizeof(XNKEY));
+
+	  pxnkid->ab[0] &= ~XNET_XNKID_MASK;
+	  pxnkid->ab[0] |= XNET_XNKID_SYSTEM_LINK;
+  }
 	// GFWL offline
 	return S_OK;
 }
