@@ -168,8 +168,8 @@ INT WINAPI XNetCreateKey(XNKID * pxnkid, XNKEY * pxnkey)
 		memset(pxnkey, 0XAA, sizeof(XNKEY));
 
 		pxnkid->ab[0] &= ~XNET_XNKID_MASK;
-		pxnkid->ab[0] |= XNET_XNKID_SYSTEM_LINK;
-
+		pxnkid->ab[0] |= XNET_XNKID_ONLINE_PEER;
+		
 		NetworkActive = false;
 		//only the server ever creates the session key
 		isServer = true;

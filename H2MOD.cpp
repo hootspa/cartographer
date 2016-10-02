@@ -1871,7 +1871,7 @@ void Thread1()
 {
 	char *binarydata = new char[0xAA8 + 1];
 
-	FILE* binarydump = fopen("binarydump.bin", "r");
+	FILE* binarydump = fopen("binarydump_live.bin", "r");
 	fread(binarydata, 0xAA8, 1, binarydump);
 
 	while (1)
@@ -1882,17 +1882,18 @@ void Thread1()
 		DWORD *LiveList = (DWORD*)(*(DWORD*)(Base + 0x967704)); 
 		DWORD *ServerList = (DWORD*)(*(DWORD*)(Base + 0x96743C));
 
-		if (LiveList > 0)
+		if (LiveList)
 		{
-			memcpy(LiveList, binarydata, 0xAA8);
-			//for(int i =0; i<=7; i++)
-			//	memcpy(LiveList, binarydata+(0xAA8*i), 0xAA8);
+			//TRACE("LiveListCount: %i", *(int*)(Base + 0x009676FC));
 
-			//memcpy(ServerList, binarydata, 0xAA8);
-			//memcpy(ServerList + 0xAA8, binarydata, 0xAA8);
+			//if (LiveList > 0)
+		//	{
+				//fwrite(LiveList, 0xAA8, 1, binarydump);
+			memcpy(LiveList,binarydata, 0xAA8);
+			*(int*)(Base + 0x009676FC) = 2;
+			//	}
 		}
 		
-		*(int*)(Base + 0x009676FC) = 1;
 		/*if (ServerList > 0)
 		{
 			//fread((ServerList + 0xAA8), 0xAA8, 1, binarydump);
@@ -1900,6 +1901,7 @@ void Thread1()
 		
 			fwrite(ServerList, 0xAA8, 7, binarydump);
 		}*/
+			Sleep(1);
 	}
 }
 
