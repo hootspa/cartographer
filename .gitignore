@@ -32,3 +32,4 @@ xliveless.aps
 /Release
 /Debug
 *.dll
+xliveless.vcxproj.user
