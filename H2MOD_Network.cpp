@@ -59,7 +59,8 @@ void onAuthorizeClient(H2ModPacket recvpak, sockaddr_in SenderAddr) {
 		}
 
 		if (already_authed == false) {
-			NetworkPlayer *nPlayer = new NetworkPlayer;
+			//TODO: should be in its own method
+			NetworkPlayer *nPlayer = new NetworkPlayer();
 			TRACE_GAME("[h2mod-network] PlayerName: %ws", PlayerName);
 			TRACE_GAME("[h2mod-network] IP:PORT: %08X:%i", SenderAddr.sin_addr.s_addr, ntohs(SenderAddr.sin_port));
 
@@ -131,7 +132,7 @@ void deletePlayer(NetworkPlayer* networkPlayer) {
 	h2mod->NetworkPlayers.erase(networkPlayer);
 }
 	
-void sendPlayer(NetworkPlayer* player) {
+void sendPlayerData(NetworkPlayer* player) {
 	SOCKADDR_IN QueueSock;
 	QueueSock.sin_port = player->port; // We can grab the port they connected from.
 	QueueSock.sin_addr.s_addr = player->addr; // Address they connected from.
@@ -156,8 +157,11 @@ void updateNetworkPlayers() {
 			} else {
 				if (player->PacketsAvailable == true) {
 					TRACE_GAME("[h2mod-network] Sending player %ws data", player->PlayerName);
-					sendPlayer(player);
+					sendPlayerData(player);
 				}
+
+				//TODO: check if map download url has been sent yet
+
 				iterator++;
 			}
 		}
@@ -185,7 +189,7 @@ void runServer() {
 		//update player information
 		updateNetworkPlayers();
 
-		//block till we receive some data from someone
+		//receive data from players (non blocking)
 		receiveGameUpdates();
 	}
 }
@@ -309,6 +313,15 @@ void runClient() {
 						Connected = true;
 					}
 
+					break;
+
+				case H2ModPacket_Type_get_map_download_url:
+					if (recvpak.has_get_map_url()) {
+						std::string url = recvpak.get_map_url().url();
+						TRACE_GAME_N("[h2mod-network] Got the map download url from from server! url = %s", url.c_str());
+
+						//TODO: spawn thread to download map from url
+					}
 					break;
 
 				case H2ModPacket_Type_set_player_team:
