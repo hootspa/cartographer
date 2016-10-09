@@ -36,7 +36,7 @@ class H2ModPacket;
 class h2mod_set_grenade;
 class h2mod_auth;
 class h2mod_set_team;
-class h2mod_get_map_download_url;
+class h2mod_map_download_url;
 
 enum H2ModPacket_Type {
   H2ModPacket_Type_authorize_client = 2,
@@ -44,7 +44,8 @@ enum H2ModPacket_Type {
   H2ModPacket_Type_h2mod_ping = 4,
   H2ModPacket_Type_h2mod_pong = 5,
   H2ModPacket_Type_set_unit_grenades = 6,
-  H2ModPacket_Type_get_map_download_url = 7
+  H2ModPacket_Type_map_download_url = 7,
+  H2ModPacket_Type_get_map_download_url = 8
 };
 bool H2ModPacket_Type_IsValid(int value);
 const H2ModPacket_Type H2ModPacket_Type_Type_MIN = H2ModPacket_Type_authorize_client;
@@ -120,6 +121,7 @@ class H2ModPacket : public ::google::protobuf::Message {
   static const Type h2mod_ping = H2ModPacket_Type_h2mod_ping;
   static const Type h2mod_pong = H2ModPacket_Type_h2mod_pong;
   static const Type set_unit_grenades = H2ModPacket_Type_set_unit_grenades;
+  static const Type map_download_url = H2ModPacket_Type_map_download_url;
   static const Type get_map_download_url = H2ModPacket_Type_get_map_download_url;
   static inline bool Type_IsValid(int value) {
     return H2ModPacket_Type_IsValid(value);
@@ -178,14 +180,14 @@ class H2ModPacket : public ::google::protobuf::Message {
   inline ::h2mod_set_grenade* release_set_grenade();
   inline void set_allocated_set_grenade(::h2mod_set_grenade* set_grenade);
 
-  // optional .h2mod_get_map_download_url get_map_url = 5;
-  inline bool has_get_map_url() const;
-  inline void clear_get_map_url();
-  static const int kGetMapUrlFieldNumber = 5;
-  inline const ::h2mod_get_map_download_url& get_map_url() const;
-  inline ::h2mod_get_map_download_url* mutable_get_map_url();
-  inline ::h2mod_get_map_download_url* release_get_map_url();
-  inline void set_allocated_get_map_url(::h2mod_get_map_download_url* get_map_url);
+  // optional .h2mod_map_download_url map_url = 5;
+  inline bool has_map_url() const;
+  inline void clear_map_url();
+  static const int kMapUrlFieldNumber = 5;
+  inline const ::h2mod_map_download_url& map_url() const;
+  inline ::h2mod_map_download_url* mutable_map_url();
+  inline ::h2mod_map_download_url* release_map_url();
+  inline void set_allocated_map_url(::h2mod_map_download_url* map_url);
 
   // @@protoc_insertion_point(class_scope:H2ModPacket)
  private:
@@ -197,8 +199,8 @@ class H2ModPacket : public ::google::protobuf::Message {
   inline void clear_has_h2_set_player_team();
   inline void set_has_set_grenade();
   inline void clear_has_set_grenade();
-  inline void set_has_get_map_url();
-  inline void clear_has_get_map_url();
+  inline void set_has_map_url();
+  inline void clear_has_map_url();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -207,7 +209,7 @@ class H2ModPacket : public ::google::protobuf::Message {
   ::h2mod_auth* h2auth_;
   ::h2mod_set_team* h2_set_player_team_;
   ::h2mod_set_grenade* set_grenade_;
-  ::h2mod_get_map_download_url* get_map_url_;
+  ::h2mod_map_download_url* map_url_;
   int type_;
   friend void  protobuf_AddDesc_h2mod_2eproto();
   friend void protobuf_AssignDesc_h2mod_2eproto();
@@ -505,14 +507,14 @@ class h2mod_set_team : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
-class h2mod_get_map_download_url : public ::google::protobuf::Message {
+class h2mod_map_download_url : public ::google::protobuf::Message {
  public:
-  h2mod_get_map_download_url();
-  virtual ~h2mod_get_map_download_url();
+  h2mod_map_download_url();
+  virtual ~h2mod_map_download_url();
 
-  h2mod_get_map_download_url(const h2mod_get_map_download_url& from);
+  h2mod_map_download_url(const h2mod_map_download_url& from);
 
-  inline h2mod_get_map_download_url& operator=(const h2mod_get_map_download_url& from) {
+  inline h2mod_map_download_url& operator=(const h2mod_map_download_url& from) {
     CopyFrom(from);
     return *this;
   }
@@ -526,17 +528,17 @@ class h2mod_get_map_download_url : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const h2mod_get_map_download_url& default_instance();
+  static const h2mod_map_download_url& default_instance();
 
-  void Swap(h2mod_get_map_download_url* other);
+  void Swap(h2mod_map_download_url* other);
 
   // implements Message ----------------------------------------------
 
-  h2mod_get_map_download_url* New() const;
+  h2mod_map_download_url* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const h2mod_get_map_download_url& from);
-  void MergeFrom(const h2mod_get_map_download_url& from);
+  void CopyFrom(const h2mod_map_download_url& from);
+  void MergeFrom(const h2mod_map_download_url& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -570,7 +572,7 @@ class h2mod_get_map_download_url : public ::google::protobuf::Message {
   inline ::std::string* release_url();
   inline void set_allocated_url(::std::string* url);
 
-  // @@protoc_insertion_point(class_scope:h2mod_get_map_download_url)
+  // @@protoc_insertion_point(class_scope:h2mod_map_download_url)
  private:
   inline void set_has_url();
   inline void clear_has_url();
@@ -585,7 +587,7 @@ class h2mod_get_map_download_url : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_h2mod_2eproto();
 
   void InitAsDefaultInstance();
-  static h2mod_get_map_download_url* default_instance_;
+  static h2mod_map_download_url* default_instance_;
 };
 // ===================================================================
 
@@ -742,45 +744,45 @@ inline void H2ModPacket::set_allocated_set_grenade(::h2mod_set_grenade* set_gren
   // @@protoc_insertion_point(field_set_allocated:H2ModPacket.set_grenade)
 }
 
-// optional .h2mod_get_map_download_url get_map_url = 5;
-inline bool H2ModPacket::has_get_map_url() const {
+// optional .h2mod_map_download_url map_url = 5;
+inline bool H2ModPacket::has_map_url() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void H2ModPacket::set_has_get_map_url() {
+inline void H2ModPacket::set_has_map_url() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void H2ModPacket::clear_has_get_map_url() {
+inline void H2ModPacket::clear_has_map_url() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void H2ModPacket::clear_get_map_url() {
-  if (get_map_url_ != NULL) get_map_url_->::h2mod_get_map_download_url::Clear();
-  clear_has_get_map_url();
+inline void H2ModPacket::clear_map_url() {
+  if (map_url_ != NULL) map_url_->::h2mod_map_download_url::Clear();
+  clear_has_map_url();
 }
-inline const ::h2mod_get_map_download_url& H2ModPacket::get_map_url() const {
-  // @@protoc_insertion_point(field_get:H2ModPacket.get_map_url)
-  return get_map_url_ != NULL ? *get_map_url_ : *default_instance_->get_map_url_;
+inline const ::h2mod_map_download_url& H2ModPacket::map_url() const {
+  // @@protoc_insertion_point(field_get:H2ModPacket.map_url)
+  return map_url_ != NULL ? *map_url_ : *default_instance_->map_url_;
 }
-inline ::h2mod_get_map_download_url* H2ModPacket::mutable_get_map_url() {
-  set_has_get_map_url();
-  if (get_map_url_ == NULL) get_map_url_ = new ::h2mod_get_map_download_url;
-  // @@protoc_insertion_point(field_mutable:H2ModPacket.get_map_url)
-  return get_map_url_;
+inline ::h2mod_map_download_url* H2ModPacket::mutable_map_url() {
+  set_has_map_url();
+  if (map_url_ == NULL) map_url_ = new ::h2mod_map_download_url;
+  // @@protoc_insertion_point(field_mutable:H2ModPacket.map_url)
+  return map_url_;
 }
-inline ::h2mod_get_map_download_url* H2ModPacket::release_get_map_url() {
-  clear_has_get_map_url();
-  ::h2mod_get_map_download_url* temp = get_map_url_;
-  get_map_url_ = NULL;
+inline ::h2mod_map_download_url* H2ModPacket::release_map_url() {
+  clear_has_map_url();
+  ::h2mod_map_download_url* temp = map_url_;
+  map_url_ = NULL;
   return temp;
 }
-inline void H2ModPacket::set_allocated_get_map_url(::h2mod_get_map_download_url* get_map_url) {
-  delete get_map_url_;
-  get_map_url_ = get_map_url;
-  if (get_map_url) {
-    set_has_get_map_url();
+inline void H2ModPacket::set_allocated_map_url(::h2mod_map_download_url* map_url) {
+  delete map_url_;
+  map_url_ = map_url;
+  if (map_url) {
+    set_has_map_url();
   } else {
-    clear_has_get_map_url();
+    clear_has_map_url();
   }
-  // @@protoc_insertion_point(field_set_allocated:H2ModPacket.get_map_url)
+  // @@protoc_insertion_point(field_set_allocated:H2ModPacket.map_url)
 }
 
 // -------------------------------------------------------------------
@@ -1069,61 +1071,61 @@ inline void h2mod_set_team::set_allocated_name(::std::string* name) {
 
 // -------------------------------------------------------------------
 
-// h2mod_get_map_download_url
+// h2mod_map_download_url
 
 // optional string url = 1;
-inline bool h2mod_get_map_download_url::has_url() const {
+inline bool h2mod_map_download_url::has_url() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void h2mod_get_map_download_url::set_has_url() {
+inline void h2mod_map_download_url::set_has_url() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void h2mod_get_map_download_url::clear_has_url() {
+inline void h2mod_map_download_url::clear_has_url() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void h2mod_get_map_download_url::clear_url() {
+inline void h2mod_map_download_url::clear_url() {
   if (url_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     url_->clear();
   }
   clear_has_url();
 }
-inline const ::std::string& h2mod_get_map_download_url::url() const {
-  // @@protoc_insertion_point(field_get:h2mod_get_map_download_url.url)
+inline const ::std::string& h2mod_map_download_url::url() const {
+  // @@protoc_insertion_point(field_get:h2mod_map_download_url.url)
   return *url_;
 }
-inline void h2mod_get_map_download_url::set_url(const ::std::string& value) {
+inline void h2mod_map_download_url::set_url(const ::std::string& value) {
   set_has_url();
   if (url_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     url_ = new ::std::string;
   }
   url_->assign(value);
-  // @@protoc_insertion_point(field_set:h2mod_get_map_download_url.url)
+  // @@protoc_insertion_point(field_set:h2mod_map_download_url.url)
 }
-inline void h2mod_get_map_download_url::set_url(const char* value) {
+inline void h2mod_map_download_url::set_url(const char* value) {
   set_has_url();
   if (url_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     url_ = new ::std::string;
   }
   url_->assign(value);
-  // @@protoc_insertion_point(field_set_char:h2mod_get_map_download_url.url)
+  // @@protoc_insertion_point(field_set_char:h2mod_map_download_url.url)
 }
-inline void h2mod_get_map_download_url::set_url(const char* value, size_t size) {
+inline void h2mod_map_download_url::set_url(const char* value, size_t size) {
   set_has_url();
   if (url_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     url_ = new ::std::string;
   }
   url_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:h2mod_get_map_download_url.url)
+  // @@protoc_insertion_point(field_set_pointer:h2mod_map_download_url.url)
 }
-inline ::std::string* h2mod_get_map_download_url::mutable_url() {
+inline ::std::string* h2mod_map_download_url::mutable_url() {
   set_has_url();
   if (url_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     url_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:h2mod_get_map_download_url.url)
+  // @@protoc_insertion_point(field_mutable:h2mod_map_download_url.url)
   return url_;
 }
-inline ::std::string* h2mod_get_map_download_url::release_url() {
+inline ::std::string* h2mod_map_download_url::release_url() {
   clear_has_url();
   if (url_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     return NULL;
@@ -1133,7 +1135,7 @@ inline ::std::string* h2mod_get_map_download_url::release_url() {
     return temp;
   }
 }
-inline void h2mod_get_map_download_url::set_allocated_url(::std::string* url) {
+inline void h2mod_map_download_url::set_allocated_url(::std::string* url) {
   if (url_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete url_;
   }
@@ -1144,7 +1146,7 @@ inline void h2mod_get_map_download_url::set_allocated_url(::std::string* url) {
     clear_has_url();
     url_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:h2mod_get_map_download_url.url)
+  // @@protoc_insertion_point(field_set_allocated:h2mod_map_download_url.url)
 }
 
 

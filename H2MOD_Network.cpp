@@ -10,7 +10,6 @@
 #include <CUser.h>
 #include <h2mod.pb.h>
 
-
 extern UINT g_port;
 extern bool isHost;
 extern HANDLE H2MOD_Network;
@@ -112,6 +111,24 @@ void receiveGameUpdates() {
 					TRACE_GAME("[h2mod-network] IP:PORT: %08X:%i", SenderAddr.sin_addr.s_addr, ntohs(SenderAddr.sin_port));
 					onPing(recvpak, SenderAddr);
 					break;
+
+				case H2ModPacket_Type_get_map_download_url:
+					//TODO: move into method
+					//request from some client to get the map download url, send it
+					H2ModPacket pack;
+					pack.set_type(H2ModPacket_Type_map_download_url);
+					h2mod_map_download_url mapDownloadUrl = pack.map_url();
+					//TODO:
+					//mapDownloadUrl.set_url(customMapDownloadLink);
+
+					char* SendBuf = new char[pack.ByteSize()];
+					memset(SendBuf, 0x00, pack.ByteSize());
+					pack.SerializeToArray(SendBuf, pack.ByteSize());
+
+					sendto(comm_socket, SendBuf, pack.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
+
+					delete[] SendBuf;
+					break;
 			}
 		}
 
@@ -128,8 +145,6 @@ void deletePlayer(NetworkPlayer* networkPlayer) {
 	}
 
 	delete[] networkPlayer; // Clear NetworkPlayer object.
-
-	h2mod->NetworkPlayers.erase(networkPlayer);
 }
 	
 void sendPlayerData(NetworkPlayer* player) {
@@ -154,14 +169,12 @@ void updateNetworkPlayers() {
 			if (iterator->second == 0) {
 				TRACE_GAME("[h2mod-network] Deleting player %ws as their value was set to 0", player->PlayerName);
 				deletePlayer(player);
+				iterator = h2mod->NetworkPlayers.erase(iterator);
 			} else {
 				if (player->PacketsAvailable == true) {
 					TRACE_GAME("[h2mod-network] Sending player %ws data", player->PlayerName);
 					sendPlayerData(player);
 				}
-
-				//TODO: check if map download url has been sent yet
-
 				iterator++;
 			}
 		}
@@ -315,9 +328,9 @@ void runClient() {
 
 					break;
 
-				case H2ModPacket_Type_get_map_download_url:
-					if (recvpak.has_get_map_url()) {
-						std::string url = recvpak.get_map_url().url();
+				case H2ModPacket_Type_map_download_url:
+					if (recvpak.has_map_url()) {
+						std::string url = recvpak.map_url().url();
 						TRACE_GAME_N("[h2mod-network] Got the map download url from from server! url = %s", url.c_str());
 
 						//TODO: spawn thread to download map from url

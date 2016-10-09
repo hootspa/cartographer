@@ -1,0 +1,40 @@
+syntax = 'proto2';
+
+message H2ModPacket {
+
+	enum Type {
+		authorize_client = 2;
+		set_player_team = 3;
+		h2mod_ping = 4;
+		h2mod_pong = 5;
+		set_unit_grenades = 6;
+		map_download_url = 7;
+		get_map_download_url = 8;
+	}
+
+	required H2ModPacket.Type type = 1;
+	optional h2mod_auth h2auth = 2;
+	optional h2mod_set_team h2_set_player_team = 3;
+	optional h2mod_set_grenade set_grenade = 4;
+	optional h2mod_map_download_url map_url = 5;
+}
+
+message h2mod_set_grenade {
+	required uint32 type = 1;
+	required uint32 count = 2;
+	required uint32 pIndex = 3;
+}
+
+message h2mod_auth {
+	required bytes name = 1;
+	required uint32 secureaddr = 2;
+}
+
+message h2mod_set_team {
+	required uint32 team = 1;
+	required bytes name = 2;	
+}
+
+message h2mod_map_download_url {
+	optional string url = 1;
+}
