@@ -114,6 +114,9 @@
     <ClCompile Include="json.cpp">
       <Filter>Source Files\H2MOD\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="H2MOD_MapManager.cpp">
+      <Filter>Source Files\H2MOD\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -196,6 +199,9 @@
     </ClInclude>
     <ClInclude Include="json.hpp">
       <Filter>Source Files\H2MOD\Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="H2MOD_MapManager.h">
+      <Filter>Source Files\H2MOD\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

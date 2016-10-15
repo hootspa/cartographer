@@ -29,6 +29,7 @@ enum CLIENT_CHAT_MODE {
 #include "H2ChatBoxCommands.h"
 #include "H2Ban.h"
 #include "H2Players.h"
+#include "H2MOD_MapManager.h"
 
 //mix of voice and game globals
 //TODO: move into H2Server
@@ -37,7 +38,9 @@ extern TSClient* client;
 extern TSServer* server;
 extern XNADDR join_game_xn;
 
-//extern H2Client* h2Client;
+extern CHAR customMapDownloadLink[128];
+
+extern MapManager* mapManager;
 
 extern IN_ADDR clientMachineAddress;
 //xnetcreatekey sets this to true

@@ -133,7 +133,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;ws2_32.lib;libprotobuf.lib;d3d9.lib;d3dx9.lib;$(MSBuildProjectDirectory)\lib\ts3client_win32.lib;$(MSBuildProjectDirectory)\lib\ts3server_win32.lib;$(MSBuildProjectDirectory)\lib\libMinHook.x86.lib;shlwapi.lib;Winmm.lib;Crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;ws2_32.lib;libprotobuf.lib;d3d9.lib;d3dx9.lib;$(MSBuildProjectDirectory)\lib\ts3client_win32.lib;$(MSBuildProjectDirectory)\lib\ts3server_win32.lib;$(MSBuildProjectDirectory)\lib\libMinHook.x86.lib;shlwapi.lib;Winmm.lib;Crypt32.lib;Urlmon.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>../../Halo 2/xlive.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ModuleDefinitionFile>.\xlive.def</ModuleDefinitionFile>
@@ -171,6 +171,7 @@
     <ClCompile Include="H2MOD.cpp" />
     <ClCompile Include="h2mod.pb.cc" />
     <ClCompile Include="H2MOD_GunGame.cpp" />
+    <ClCompile Include="H2MOD_MapManager.cpp" />
     <ClCompile Include="H2MOD_Network.cpp" />
     <ClCompile Include="H2MOD_ServerList.cpp" />
     <ClCompile Include="H2Players.cpp" />
@@ -196,6 +197,7 @@
     <ClInclude Include="h2mod.pb.h" />
     <ClInclude Include="H2MOD_GunGame.h" />
     <ClInclude Include="H2MOD_Infection.h" />
+    <ClInclude Include="H2MOD_MapManager.h" />
     <ClInclude Include="H2MOD_Network.h" />
     <ClInclude Include="H2MOD_ServerList.h" />
     <ClInclude Include="H2Players.h" />

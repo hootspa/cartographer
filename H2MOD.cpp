@@ -508,6 +508,7 @@ typedef bool(*live_check)();
 live_check live_check_method;
 
 bool clientXboxLiveCheck() {
+	//lets you access live menu
 	return true;
 }
 
@@ -1134,6 +1135,13 @@ typedef int(__stdcall *show_download_dialog)(BYTE* thisx);
 show_download_dialog show_download_dialog_method;
 
 int __stdcall showDownloadDialog(BYTE* thisx) {
+	wchar_t* currentMapName = (wchar_t*)(h2mod->GetBase() + 0x97737C);
+	std::wstring ucurrentMapName(currentMapName);
+
+	BOOL excludeMaps = ucurrentMapName == L"Custom Map";
+	if (!ucurrentMapName.empty() && !mapManager->hasCheckedMapAlready(ucurrentMapName) && !excludeMaps) {
+		mapManager->startMapDownload();
+	}
 	//do nothing instead, so people don't get kicked from the game
 	return 0;
 }
@@ -1424,7 +1432,7 @@ int __cdecl OnMapLoad(int a1)
 		variant_name = (wchar_t*)(((char*)h2mod->GetBase()) + 0x48D708);
 	
 
-	TRACE_GAME("[h2mod] OnMapLoad variant name %ws", variant_name);
+	TRACE_GAME("[h2mod] OnMapLoad variant name %s", variant_name);
 
 	if (wcsstr(variant_name, L"zombies") > 0 || wcsstr(variant_name, L"Zombies") > 0 || wcsstr(variant_name, L"Infection") > 0 || wcsstr(variant_name, L"infection") > 0)
 	{
@@ -1479,7 +1487,6 @@ int __cdecl OnMapLoad(int a1)
 			TRACE("Loading mainmenu");
 			isLobby = true;
 			MasterState = 5;
-
 		}
 		else
 		{
@@ -1720,7 +1727,45 @@ BOOL WINAPI DetourCryptProtectData(DATA_BLOB *pDataIn, LPCWSTR szDataDescr, DATA
 	return 1;
 }
 
+typedef signed int(__cdecl *string_display_hook)(int a3, unsigned int a4, int a5, int a6);
+string_display_hook string_display_hook_method;
 
+std::wstring YOU_FAILED_TO_LOAD_MAP_ORG = L"You failed to load the map.";
+//std::wstring YOU_FAILED_TO_LOAD_MAP_REPLACE = L"You failed to load the map, trying to download";
+
+//std::wstring WAITING_ORG = L"Waiting for you to start the game";
+//std::wstring WAITING_REPLACE = L"Nigga start the game";
+
+std::wstring EMPTY_STR(L"");
+
+//lets you follow the call path of any string that is displayed (in a debugger)
+signed int __cdecl stringDisplayHook(int a3, unsigned int a4, int a5, int a6) {
+	wchar_t* temp = (wchar_t*)a5;
+	if (temp[0] != L' ') {
+		//std::wstring tempStr(temp);
+		/*
+		if (tempStr == L"") {
+			__debugbreak();
+		}*/
+		//TRACE("String=%s", temp);
+		//if (wcscmp(temp, WAITING_ORG.c_str()) == 0) {
+			//return string_display_hook_method(a3, a4, (int)(WAITING_REPLACE.c_str()), a6);
+		//}
+		if (wcscmp(temp, YOU_FAILED_TO_LOAD_MAP_ORG.c_str()) == 0 && mapManager->getCustomLobbyMessage() != EMPTY_STR) {
+			//if we detect that we failed to load the map, we display different strings only for the duration of
+			//this specific string being displayed
+			return string_display_hook_method(a3, a4, (int)(mapManager->getCustomLobbyMessage().c_str()), a6);
+		}
+	}
+	return string_display_hook_method(a3, a4, a5, a6);
+}
+
+typedef void(__stdcall *display_string_hook)(void* thisx, int a2);
+display_string_hook display_string_hook_method;
+
+void __stdcall displayStringHook(void* thisx, int a2) {
+	return display_string_hook_method(thisx, a2);
+}
 
 void H2MOD::ApplyHooks()
 {
@@ -1793,17 +1838,54 @@ void H2MOD::ApplyHooks()
 		live_check_method2 = (live_check2)DetourFunc((BYTE*)this->GetBase() + 0x1B1643, (BYTE*)clientXboxLiveCheck2, 9);
 		VirtualProtect(live_check_method2, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
+		/* don't seem to help (in finding ping)
 		//0x1AD782
 		live_check_method3 = (live_check3)DetourFunc((BYTE*)this->GetBase() + 0x1AD782, (BYTE*)clientXboxLiveCheck3, 9);
 		VirtualProtect(live_check_method3, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		//0x1AD736
 		live_check_method4 = (live_check4)DetourFunc((BYTE*)this->GetBase() + 0x1AD736, (BYTE*)clientXboxLiveCheck4, 9);
-		VirtualProtect(live_check_method4, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		VirtualProtect(live_check_method4, 4, PAGE_EXECUTE_READWRITE, &dwBack);*/
 
 		//0x24499F
 		show_download_dialog_method = (show_download_dialog)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x24499F, (BYTE*)showDownloadDialog, 6);
 		VirtualProtect(show_download_dialog_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		//display_string_hook_method = (display_string_hook)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x21BF85, (BYTE*)displayStringHook, 11);
+		//VirtualProtect(display_string_hook_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		//TODO: add accesscolorbytes1 (better than below for string follows, cause it access the non unicode version of the string)
+		//some of the unicode strings are drawn and their callpaths will just lead to some generic drawing code
+
+		//turn on if you want follow string display calls (in a debugger)
+		string_display_hook_method = (string_display_hook)DetourFunc((BYTE*)h2mod->GetBase() + 0x287AB5, (BYTE*)stringDisplayHook, 5);
+		VirtualProtect(string_display_hook_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		/* experimental live flags
+		DWORD* isLive = (DWORD*)(h2mod->GetBase() + 0x422450);
+		VirtualProtect(isLive, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		*isLive = 1;
+		VirtualProtect(isLive, 4, dwBack, NULL);
+
+		DWORD* isLive2 = (DWORD*)(h2mod->GetBase() + 0x420FE8);
+		VirtualProtect(isLive2, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		*isLive2 = 1;
+		VirtualProtect(isLive2, 4, dwBack, NULL);
+
+		DWORD* isLive22 = (DWORD*)(h2mod->GetBase() + 0x420FE8 + 0x73A0);
+		VirtualProtect(isLive22, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		*isLive22 = 3;
+		VirtualProtect(isLive22, 4, dwBack, NULL);
+
+		BYTE* isLive3 = (BYTE*)(h2mod->GetBase() + 0x420FC0);
+		VirtualProtect(isLive3, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		*isLive3 = 1;
+		VirtualProtect(isLive3, 4, dwBack, NULL);
+
+		int* liveFlags = (int*)(h2mod->GetBase() + 0x420FC4);
+		VirtualProtect(&liveFlags[0], 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		liveFlags[0] = 1; //greater than 0, less than 5
+		VirtualProtect(&liveFlags[0], 4, dwBack, NULL);*/
 	}
 	else 
 	{

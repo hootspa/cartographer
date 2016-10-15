@@ -9,6 +9,7 @@
 #include "xliveless.h"
 #include <CUser.h>
 #include <h2mod.pb.h>
+#include "Globals.h"
 
 extern UINT g_port;
 extern bool isHost;
@@ -49,7 +50,7 @@ void onAuthorizeClient(H2ModPacket recvpak, sockaddr_in SenderAddr) {
 
 
 		for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it) {
-			if (wcscmp(it->first->PlayerName, PlayerName) == 0)	{
+			if (wcscmp(it->first->PlayerName, PlayerName) == 0) {
 				TRACE_GAME("[h2mod-network] This player ( %ws ) was already connected, sending them another packet letting them know they're authed already.", PlayerName);
 
 				authorizeClient(PlayerName, recvpak.h2auth().secureaddr(), SenderAddr);
@@ -92,43 +93,44 @@ void receiveGameUpdates() {
 	memset(NetworkData, 0x00, 255);
 	int recvresult = recvfrom(comm_socket, NetworkData, 255, 0, (sockaddr*)&SenderAddr, &SenderAddrSize);
 
-	if (recvresult > 0)	{
+	if (recvresult > 0) {
 		TRACE_GAME("[H2MOD-Network] recvresult: %i", recvresult);
 
 		H2ModPacket recvpak;
 		recvpak.ParseFromArray(NetworkData, recvresult);
 		TRACE_GAME("[H2Mod-Network] recvpak.ByteSize(): %i", recvpak.ByteSize());
 
-		if (recvpak.has_type())	{
-			switch (recvpak.type())	{
-				case H2ModPacket_Type_authorize_client:
-					TRACE_GAME("[h2mod-network] Player Connected!");
-					onAuthorizeClient(recvpak, SenderAddr);
-					break;
+		if (recvpak.has_type()) {
+			switch (recvpak.type()) {
+			case H2ModPacket_Type_authorize_client:
+				TRACE_GAME("[h2mod-network] Player Connected!");
+				onAuthorizeClient(recvpak, SenderAddr);
+				break;
 
-				case H2ModPacket_Type_h2mod_ping:
-					TRACE_GAME("[h2mod-network] ping packet from client sending pong...");
-					TRACE_GAME("[h2mod-network] IP:PORT: %08X:%i", SenderAddr.sin_addr.s_addr, ntohs(SenderAddr.sin_port));
-					onPing(recvpak, SenderAddr);
-					break;
+			case H2ModPacket_Type_h2mod_ping:
+				TRACE_GAME("[h2mod-network] ping packet from client sending pong...");
+				TRACE_GAME("[h2mod-network] IP:PORT: %08X:%i", SenderAddr.sin_addr.s_addr, ntohs(SenderAddr.sin_port));
+				onPing(recvpak, SenderAddr);
+				break;
 
-				case H2ModPacket_Type_get_map_download_url:
-					//TODO: move into method
-					//request from some client to get the map download url, send it
-					H2ModPacket pack;
-					pack.set_type(H2ModPacket_Type_map_download_url);
-					h2mod_map_download_url mapDownloadUrl = pack.map_url();
-					//TODO:
-					//mapDownloadUrl.set_url(customMapDownloadLink);
+			case H2ModPacket_Type_get_map_download_url:
+				//TODO: move into method
+				//TODO: if the download link isn't set, we should be able to tell the client this
+				//request from some client to get the map download url, send it
+				H2ModPacket pack;
+				pack.set_type(H2ModPacket_Type_map_download_url);
+				h2mod_map_download_url* mapDownloadUrl = pack.mutable_map_url();
+				mapDownloadUrl->set_url(customMapDownloadLink);
 
-					char* SendBuf = new char[pack.ByteSize()];
-					memset(SendBuf, 0x00, pack.ByteSize());
-					pack.SerializeToArray(SendBuf, pack.ByteSize());
+				char* SendBuf = new char[pack.ByteSize()];
+				memset(SendBuf, 0x00, pack.ByteSize());
+				pack.SerializeToArray(SendBuf, pack.ByteSize());
 
-					sendto(comm_socket, SendBuf, pack.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
+				sendto(comm_socket, SendBuf, pack.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
+				TRACE_GAME_N("[h2mod-network] Sending map download url=%s", mapDownloadUrl->mutable_url()->c_str());
 
-					delete[] SendBuf;
-					break;
+				delete[] SendBuf;
+				break;
 			}
 		}
 
@@ -146,7 +148,7 @@ void deletePlayer(NetworkPlayer* networkPlayer) {
 
 	delete[] networkPlayer; // Clear NetworkPlayer object.
 }
-	
+
 void sendPlayerData(NetworkPlayer* player) {
 	SOCKADDR_IN QueueSock;
 	QueueSock.sin_port = player->port; // We can grab the port they connected from.
@@ -155,22 +157,23 @@ void sendPlayerData(NetworkPlayer* player) {
 
 	sendto(comm_socket, player->PacketData, player->PacketSize, 0, (sockaddr*)&QueueSock, sizeof(QueueSock)); // Just send the already serialized data over the socket.
 
-	//TODO: should be its own method
+																																																						//TODO: should be its own method
 	player->PacketsAvailable = false;
 
 	delete[] player->PacketData; // Delete packet data we've sent it already.
 }
 
 void updateNetworkPlayers() {
-	if (h2mod->NetworkPlayers.size() > 0)	{
+	if (h2mod->NetworkPlayers.size() > 0) {
 		auto iterator = h2mod->NetworkPlayers.begin();
-		while (iterator != h2mod->NetworkPlayers.end())	{
+		while (iterator != h2mod->NetworkPlayers.end()) {
 			NetworkPlayer* player = iterator->first;
 			if (iterator->second == 0) {
 				TRACE_GAME("[h2mod-network] Deleting player %ws as their value was set to 0", player->PlayerName);
 				deletePlayer(player);
 				iterator = h2mod->NetworkPlayers.erase(iterator);
-			} else {
+			}
+			else {
 				if (player->PacketsAvailable == true) {
 					TRACE_GAME("[h2mod-network] Sending player %ws data", player->PlayerName);
 					sendPlayerData(player);
@@ -287,6 +290,9 @@ void runClient() {
 			}
 		}
 
+		//request map download url if necessary from the server
+		mapManager->requestMapDownloadUrl(comm_socket, SendStruct);
+
 		sockaddr_in SenderAddr;
 		int SenderAddrSize = sizeof(SenderAddr);
 
@@ -329,13 +335,19 @@ void runClient() {
 					break;
 
 				case H2ModPacket_Type_map_download_url:
-					if (recvpak.has_map_url()) {
-						std::string url = recvpak.map_url().url();
+				{
+					h2mod_map_download_url mapUrlPack = recvpak.map_url();
+					if (mapUrlPack.has_url()) {
+						std::string url = mapUrlPack.url();
 						TRACE_GAME_N("[h2mod-network] Got the map download url from from server! url = %s", url.c_str());
 
-						//TODO: spawn thread to download map from url
+						mapManager->setMapDownloadUrl(url);
 					}
-					break;
+					else {
+						TRACE_GAME_N("[h2mod-network] Got a map download packet but no url specified");
+					}
+				}
+				break;
 
 				case H2ModPacket_Type_set_player_team:
 
@@ -412,7 +424,8 @@ DWORD WINAPI NetworkThread(LPVOID lParam)
 
 	if (isHost) {
 		runServer();
-	} else {
+	}
+	else {
 		runClient();
 	}
 

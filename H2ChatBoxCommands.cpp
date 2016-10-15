@@ -374,16 +374,7 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 
-			typedef char(__thiscall *possible_map_reload)(int thisx);
-			possible_map_reload possible_map_reload_method = (possible_map_reload)(h2mod->GetBase() + 0x4D021);
-			DWORD* unk = (DWORD*)(h2mod->GetBase() + 0x482D70);
-
-			typedef struct RTL_CRITICAL_SECTION**(__thiscall *init_critical_section)(int thisx);
-			init_critical_section init_critical_section_method = (init_critical_section)(h2mod->GetBase() + 0xC18BD);
-
-			//*(WORD *)((int)unk + 148016) = 0;
-			init_critical_section_method((int)unk);
-			possible_map_reload_method((int)unk);
+			mapManager->reloadMaps();
 		}
 		else if (firstCommand == "$spawn") {
 			if (splitCommands.size() != 2) {

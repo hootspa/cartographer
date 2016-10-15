@@ -6,6 +6,8 @@ TSUsers* tsUsers = new TSUsers();
 TSClient* client = NULL;
 TSServer* server = NULL;
 
+MapManager* mapManager = new MapManager();
+
 //TODO: only really works once the teamspeak client has opened the microphone up and validated it could, till then we just assume the microphone is enabled
 //we need something a bit nicer for this
 bool microphoneEnabled = true;

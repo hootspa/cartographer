@@ -10,6 +10,7 @@
 #include "xlive_network.h"
 #include "CUser.h"
 #include "Globals.h"
+#include <h2mod.pb.h>
 #include "H2MOD_ServerList.h"
 
 using namespace std;
@@ -60,6 +61,7 @@ extern UINT g_port;
 extern UINT g_debug;
 extern CHAR g_profileDirectory[];
 extern UINT voice_chat;
+extern CHAR customMapDownloadLink[128];
 extern BOOL isHost;
 
 extern void InitInstance();
@@ -3368,7 +3370,6 @@ LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicS
 			TRACE("You are hosting a game");
 			isHost = true;
 			startServer();
-			//TODO: start listening on 1008 for map download requests
 		} else {
 			TRACE("You are joining a game");
 			startClient(true);
@@ -3376,12 +3377,7 @@ LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicS
 	}
 	return ERROR_IO_PENDING;
 }
-CHAR conversionFunc(WCHAR wchar) {
-	// simple typecast
-	// works because UNICODE incorporates ASCII into itself
-	return CHAR(wchar);
 
-}
 void startClient(bool startThread) {
 	//basically regardless if you are the host or not, you are always create a client to connect to "some" server
 	if (!client) {
@@ -3410,9 +3406,8 @@ void startClient(bool startThread) {
 	client->setServerAddress(serverAddr);
 	client->setServerPort(port);
 
-	//only player 1 gets to use voice, guests don't
 	WCHAR strw[8192];
-	//needs to live on the heap for the duration of the entire process, cause we reuse ts clients to connect to different ts servers
+	//cleaned up when client is closed
 	char* strw3 = new char[4096];
 	wsprintf(strw, L"%I64x", xFakeXuid[0]);
 	wcstombs(strw3, strw, 8192);
@@ -4073,6 +4068,9 @@ void cleanupClientAndServer() {
 
 	//empty player cache
 	players->clear();
+
+	//leaving game, so don't keep existing download url
+	mapManager->resetMapDownloadUrl();
 }
 
 
@@ -5691,7 +5689,7 @@ DWORD WINAPI XLocatorServiceInitialize( DWORD a1, DWORD a2 )
 
 
 	// GFWL offline
-	return 0;
+	return 1;
 }
 
 
