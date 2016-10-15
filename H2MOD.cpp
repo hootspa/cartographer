@@ -1083,6 +1083,8 @@ void H2MOD::write_inner_chat_dynamic(const wchar_t* data) {
 typedef int(__stdcall *write_chat_text)(void*, int);
 write_chat_text write_chat_text_method;
 
+std::string empty("");
+
 int __stdcall write_chat_hook(void* pObject, int a2) {
 	/*
 	sub_14A7567((int)&v14, 0x79u, a2);            // this function def populates v14 with whatevers in the input component
@@ -1103,9 +1105,11 @@ int __stdcall write_chat_hook(void* pObject, int a2) {
 	char c = str.c_str()[0];
 	if (c == '$') {
 		//this be a command, treat it differently
+		h2mod->currentchatstr = str;
 		h2mod->handle_command(str);
 		return 1;
 	} else {
+		h2mod->currentchatstr = empty;
 		return write_chat_text_method(pObject, a2);
 	}
 }
@@ -1767,6 +1771,19 @@ void __stdcall displayStringHook(void* thisx, int a2) {
 	return display_string_hook_method(thisx, a2);
 }
 
+typedef char (__stdcall *send_text_chat)(char* thisx, int a2, int a3, char a4, char a5);
+send_text_chat send_text_chat_method;
+
+char __stdcall sendTextChat(char* thisx, int a2, int a3, char a4, char a5) {
+	const char* text = h2mod->currentchatstr.c_str();
+	char c = text[0];
+	if (c != '$') {
+		//don't send chatbox commands to anyone
+		return send_text_chat_method(thisx, a2, a3, a4, a5);
+	}
+	return ' ';
+}
+
 void H2MOD::ApplyHooks()
 {
 
@@ -1860,6 +1877,10 @@ void H2MOD::ApplyHooks()
 		//turn on if you want follow string display calls (in a debugger)
 		string_display_hook_method = (string_display_hook)DetourFunc((BYTE*)h2mod->GetBase() + 0x287AB5, (BYTE*)stringDisplayHook, 5);
 		VirtualProtect(string_display_hook_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		//0x1C7FE0
+		send_text_chat_method = (send_text_chat)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x1C7FE0, (BYTE*)sendTextChat, 11);
+		VirtualProtect(send_text_chat_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		/* experimental live flags
 		DWORD* isLive = (DWORD*)(h2mod->GetBase() + 0x422450);

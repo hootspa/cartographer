@@ -135,6 +135,7 @@ public:
 		std::unordered_map<wchar_t*, int> SoundMap;
 		std::mutex sound_mutex;
 
+		std::string currentchatstr;
 		std::unordered_map<int, int> playerIndexToDynamicBase;
 private:
 		DWORD Base;
@@ -142,7 +143,6 @@ private:
 
 
 extern H2MOD* h2mod;
-
 
 
 #endif

@@ -76,6 +76,7 @@ void MapManager::resetMapDownloadUrl() {
 
 void MapManager::setCustomLobbyMessage(std::wstring newStatus) {
 	this->customLobbyMessage = newStatus;
+	Sleep(750);
 }
 
 bool MapManager::isZipFile(std::string path) {
