@@ -33,6 +33,7 @@ CHAR g_szToken[32] = { "" };
 CHAR g_szWANIP[16] = { "127.0.0.1" };
 CHAR g_szLANIP[16] = { "127.0.0.1" };
 CHAR customMapDownloadLink[128];
+CHAR customMapZipDownloadLink[128];
 ULONG g_lWANIP = inet_addr("127.0.0.1");
 ULONG g_lLANIP = inet_addr("127.0.0.1");
 
@@ -296,6 +297,7 @@ void InitInstance()
 				CHECK_ARG("voice_chat = ", voice_chat);
 				CHECK_ARG("fps_enable = ", fps_enable);
 				CHECK_ARG_STR("custom_maps_link = ", customMapDownloadLink);
+				CHECK_ARG_STR("custom_maps_zip_link = ", customMapZipDownloadLink);
 			}
 
 			

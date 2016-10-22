@@ -487,7 +487,7 @@ void TSClient::onTalkStatusChangeEvent(uint64 serverConnectionHandlerID, int sta
 
 			//TODO: once proximity is done, it would default to proximity chat
 			if (!teamPlayOn) {
-				//if team play is off, just treat lobby chat
+				//if team play is off, just treat like lobby chat
 				handleNoTeamsTalk(teamspeakClientID, remoteId);
 			}
 			else if (clientChatMode == TEAM) {

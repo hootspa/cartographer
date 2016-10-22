@@ -177,6 +177,9 @@
     <ClCompile Include="H2Players.cpp" />
     <ClCompile Include="Hook.cpp" />
     <ClCompile Include="json.cpp" />
+    <ClCompile Include="miniz.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="packet.pb.cc" />
     <ClCompile Include="H2MOD_Infection.cpp" />

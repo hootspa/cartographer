@@ -37,4 +37,5 @@ message h2mod_set_team {
 
 message h2mod_map_download_url {
 	optional string url = 1;
+	optional string type = 2;
 }

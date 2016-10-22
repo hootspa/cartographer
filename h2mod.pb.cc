@@ -114,8 +114,9 @@ void protobuf_AssignDesc_h2mod_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(h2mod_set_team));
   h2mod_map_download_url_descriptor_ = file->message_type(4);
-  static const int h2mod_map_download_url_offsets_[1] = {
+  static const int h2mod_map_download_url_offsets_[2] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(h2mod_map_download_url, url_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(h2mod_map_download_url, type_),
   };
   h2mod_map_download_url_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -187,8 +188,8 @@ void protobuf_AddDesc_h2mod_2eproto() {
     "ype\030\001 \002(\r\022\r\n\005count\030\002 \002(\r\022\016\n\006pIndex\030\003 \002(\r"
     "\".\n\nh2mod_auth\022\014\n\004name\030\001 \002(\014\022\022\n\nsecuread"
     "dr\030\002 \002(\r\",\n\016h2mod_set_team\022\014\n\004team\030\001 \002(\r"
-    "\022\014\n\004name\030\002 \002(\014\"%\n\026h2mod_map_download_url"
-    "\022\013\n\003url\030\001 \001(\t", 573);
+    "\022\014\n\004name\030\002 \002(\014\"3\n\026h2mod_map_download_url"
+    "\022\013\n\003url\030\001 \001(\t\022\014\n\004type\030\002 \001(\t", 587);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "h2mod.proto", &protobuf_RegisterTypes);
   H2ModPacket::default_instance_ = new H2ModPacket();
@@ -1521,6 +1522,7 @@ void h2mod_set_team::Swap(h2mod_set_team* other) {
 
 #ifndef _MSC_VER
 const int h2mod_map_download_url::kUrlFieldNumber;
+const int h2mod_map_download_url::kTypeFieldNumber;
 #endif  // !_MSC_VER
 
 h2mod_map_download_url::h2mod_map_download_url()
@@ -1543,6 +1545,7 @@ void h2mod_map_download_url::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
   url_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  type_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1554,6 +1557,9 @@ h2mod_map_download_url::~h2mod_map_download_url() {
 void h2mod_map_download_url::SharedDtor() {
   if (url_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete url_;
+  }
+  if (type_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete type_;
   }
   if (this != default_instance_) {
   }
@@ -1581,9 +1587,16 @@ h2mod_map_download_url* h2mod_map_download_url::New() const {
 }
 
 void h2mod_map_download_url::Clear() {
-  if (has_url()) {
-    if (url_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-      url_->clear();
+  if (_has_bits_[0 / 32] & 3) {
+    if (has_url()) {
+      if (url_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        url_->clear();
+      }
+    }
+    if (has_type()) {
+      if (type_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        type_->clear();
+      }
     }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -1609,6 +1622,23 @@ bool h2mod_map_download_url::MergePartialFromCodedStream(
             this->url().data(), this->url().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
             "url");
+        } else {
+          goto handle_unusual;
+        }
+        if (input->ExpectTag(18)) goto parse_type;
+        break;
+      }
+
+      // optional string type = 2;
+      case 2: {
+        if (tag == 18) {
+         parse_type:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_type()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+            this->type().data(), this->type().length(),
+            ::google::protobuf::internal::WireFormat::PARSE,
+            "type");
         } else {
           goto handle_unusual;
         }
@@ -1651,6 +1681,16 @@ void h2mod_map_download_url::SerializeWithCachedSizes(
       1, this->url(), output);
   }
 
+  // optional string type = 2;
+  if (has_type()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+      this->type().data(), this->type().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      "type");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      2, this->type(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -1672,6 +1712,17 @@ void h2mod_map_download_url::SerializeWithCachedSizes(
         1, this->url(), target);
   }
 
+  // optional string type = 2;
+  if (has_type()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+      this->type().data(), this->type().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      "type");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->type(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -1689,6 +1740,13 @@ int h2mod_map_download_url::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->url());
+    }
+
+    // optional string type = 2;
+    if (has_type()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->type());
     }
 
   }
@@ -1721,6 +1779,9 @@ void h2mod_map_download_url::MergeFrom(const h2mod_map_download_url& from) {
     if (from.has_url()) {
       set_url(from.url());
     }
+    if (from.has_type()) {
+      set_type(from.type());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -1745,6 +1806,7 @@ bool h2mod_map_download_url::IsInitialized() const {
 void h2mod_map_download_url::Swap(h2mod_map_download_url* other) {
   if (other != this) {
     std::swap(url_, other->url_);
+    std::swap(type_, other->type_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

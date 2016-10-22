@@ -39,6 +39,7 @@ extern TSServer* server;
 extern XNADDR join_game_xn;
 
 extern CHAR customMapDownloadLink[128];
+extern CHAR customMapZipDownloadLink[128];
 
 extern MapManager* mapManager;
 
@@ -46,7 +47,6 @@ extern IN_ADDR clientMachineAddress;
 //xnetcreatekey sets this to true
 //xsessiondelete/end set this to false
 extern bool isServer;
-extern bool customMapSocketOpen;
 extern bool microphoneEnabled;
 extern bool isLobby;
 extern CLIENT_CHAT_MODE clientChatMode;

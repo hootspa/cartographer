@@ -73,7 +73,7 @@ bool BanUtility::isValidAddressForAllowedCountries(IN_ADDR possibleBannedAddress
 	return true;
 }
 
-void BanUtility::banPlayer(char* gamertag, IN_ADDR ipAddress, XUID xboxId) {
+void BanUtility::banPlayer(const char* gamertag, IN_ADDR ipAddress, XUID xboxId) {
 	BannedPlayerAddress futureBannedAddress;
 	futureBannedAddress.S_un.S_addr = ipAddress.S_un.S_addr;
 	BannedPlayer bannedPlayer = {

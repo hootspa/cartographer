@@ -31,7 +31,7 @@ void ChatBoxCommands::setChatMode(CLIENT_CHAT_MODE mode) {
 	clientChatMode = mode;
 }
 
-void ChatBoxCommands::kick(char* playerName) {
+void ChatBoxCommands::kick(const char* playerName) {
 	H2Player player = players->getPlayer(playerName);
 	int playerIndex = player.index;
 
@@ -110,7 +110,7 @@ void ChatBoxCommands::listPlayers() {
 	}
 }
 
-void ChatBoxCommands::ban(char* gamertag) {
+void ChatBoxCommands::ban(const char* gamertag) {
 	//first get all the unique properties about the player
 	H2Player player = players->getPlayer(gamertag);
 	int playerIndex = player.index;
@@ -140,27 +140,21 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
-
 			try {
 				if (!isServer) {
+					//if clients use kick function, they will be kicked automatically by the game
 					h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
-				}
-				else {
-					if (isNum(cstr)) {
-						kick(atoi(cstr));
-					}
-					else {
-						kick(cstr);
+				}	else {
+					if (isNum(firstArg.c_str())) {
+						kick(atoi(firstArg.c_str()));
+					}	else {
+						kick(firstArg.c_str());
 					}
 				}
 			}
 			catch (...) {
 				TRACE("Error trying to kick");
 			}
-
-			delete[] cstr;
 		}
 		else if (firstCommand == "$ban") {
 			if (splitCommands.size() != 2) {
@@ -173,17 +167,13 @@ void ChatBoxCommands::handle_command(std::string command) {
 			return;
 
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
 
 			if (!isServer) {
 				h2mod->write_inner_chat_dynamic(L"Only the server can ban players");
 			}
 			else {
-				ban(cstr);
+				ban(firstArg.c_str());
 			}
-
-			delete[] cstr;
 		}
 		else if (firstCommand == "$mute") {
 			if (splitCommands.size() < 2) {
@@ -191,21 +181,17 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
 
 			/*
 			std::string secondArg = splitCommands[2];
 			bool ban = secondArg == "true" ? true : false;*/
 
 			try {
-				mute(cstr, false);
+				mute(firstArg.c_str(), false);
 			}
 			catch (...) {
 				TRACE("Error trying to mute");
 			}
-
-			delete[] cstr;
 		}
 		else if (firstCommand == "$unmute") {
 			if (splitCommands.size() < 2) {
@@ -213,16 +199,11 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
-
 			try {
-				unmute(cstr);
-			}
-			catch (...) {
+				unmute(firstArg.c_str());
+			}	catch (...) {
 				TRACE("Error trying to unmute");
 			}
-			delete[] cstr;
 		}
 		else if (firstCommand == "$setchatmode") {
 			//TODO: use command socket to set chat modes for client
@@ -316,16 +297,11 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
-
-			H2Player player = players->getPlayer(cstr);
+			H2Player player = players->getPlayer(firstArg.c_str());
 
 			std::wstringstream oss;
 			oss << "Player " << firstArg.c_str() << " index is = " << player.index;
 			h2mod->write_inner_chat_dynamic(oss.str().c_str());
-
-			delete[] cstr;
 		}
 		else if (firstCommand == "$start") {
 			if (splitCommands.size() != 2) {
@@ -382,34 +358,34 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 
-				std::string firstArg = splitCommands[1];
-				char *cstr = new char[firstArg.length() + 1];
-				strcpy(cstr, firstArg.c_str());
-			
-				printf("string object_datum = %s", cstr);
+			std::string firstArg = splitCommands[1];
+			char *cstr = new char[firstArg.length() + 1];
+			strcpy(cstr, firstArg.c_str());
 
-				unsigned int object_datum = strtoul(cstr, NULL, 0);
-				printf("object_datum: %08X\n", object_datum);
-				TRACE_GAME("object_datum = %08X", object_datum);
-				
-				char* nObject = new char[0xC4]; 
-				DWORD dwBack;
-				VirtualProtect(nObject, 0xC4, PAGE_EXECUTE_READWRITE, &dwBack);
-				
-				if (object_datum)
-				{
-					unsigned int player_datum = h2mod->get_unit_datum_from_player_index(0);
-					call_object_placement_data_new(nObject, object_datum, player_datum, 0);
+			printf("string object_datum = %s", cstr);
 
-					*(float*)(nObject + 0x1C) = h2mod->get_player_x(0, true);
-					*(float*)(nObject + 0x20) = h2mod->get_player_y(0, true);
-					*(float*)(nObject + 0x24) = (h2mod->get_player_z(0, true) + 5.0f);
+			unsigned int object_datum = strtoul(cstr, NULL, 0);
+			printf("object_datum: %08X\n", object_datum);
+			TRACE_GAME("object_datum = %08X", object_datum);
 
-					unsigned int object_gamestate_datum = call_object_new(nObject);
-					call_add_object_to_sync(object_gamestate_datum);
-					
-					
-				}
+			char* nObject = new char[0xC4];
+			DWORD dwBack;
+			VirtualProtect(nObject, 0xC4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+			if (object_datum)
+			{
+				unsigned int player_datum = h2mod->get_unit_datum_from_player_index(0);
+				call_object_placement_data_new(nObject, object_datum, player_datum, 0);
+
+				*(float*)(nObject + 0x1C) = h2mod->get_player_x(0, true);
+				*(float*)(nObject + 0x20) = h2mod->get_player_y(0, true);
+				*(float*)(nObject + 0x24) = (h2mod->get_player_z(0, true) + 5.0f);
+
+				unsigned int object_gamestate_datum = call_object_new(nObject);
+				call_add_object_to_sync(object_gamestate_datum);
+
+
+			}
 		}
 	}
 }

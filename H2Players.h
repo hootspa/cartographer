@@ -24,8 +24,10 @@ public:
 	H2Player getPlayer(int playerIndex);
 	H2Player getPlayer(XUID playerXuid);
 	void getPlayersForTeam(H2Player players[], int team);
-	void update(std::string playerName, int playerIndex, int playerTeam, XUID playerXuid);
+	void updatePlayerId(int playerIndex, XUID playerId);
+	void updatePlayerNameAndTeam(int playerIndex, std::string playerName, int playerTeam);
 	void clear();
+	void initPeerHostData(char* arr, XUID id);
 
 private:
 	bool playersEqual(H2Player player1, H2Player player2);

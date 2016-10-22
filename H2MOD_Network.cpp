@@ -120,7 +120,14 @@ void receiveGameUpdates() {
 				H2ModPacket pack;
 				pack.set_type(H2ModPacket_Type_map_download_url);
 				h2mod_map_download_url* mapDownloadUrl = pack.mutable_map_url();
-				mapDownloadUrl->set_url(customMapDownloadLink);
+				if (strlen(customMapDownloadLink) != 0) {
+					mapDownloadUrl->set_url(customMapDownloadLink);
+					mapDownloadUrl->set_type("map");
+				} else if (strlen(customMapZipDownloadLink) != 0) {
+					mapDownloadUrl->set_url(customMapZipDownloadLink);
+					mapDownloadUrl->set_type("zip");
+				}	else {
+				}
 
 				char* SendBuf = new char[pack.ByteSize()];
 				memset(SendBuf, 0x00, pack.ByteSize());
@@ -342,6 +349,7 @@ void runClient() {
 						TRACE_GAME_N("[h2mod-network] Got the map download url from from server! url = %s", url.c_str());
 
 						mapManager->setMapDownloadUrl(url);
+						mapManager->setMapDownloadType(mapUrlPack.type());
 					}
 					else {
 						TRACE_GAME_N("[h2mod-network] Got a map download packet but no url specified");

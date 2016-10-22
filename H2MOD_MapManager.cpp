@@ -3,14 +3,18 @@
 #include <fstream>
 #include <Urlmon.h>
 
+#include <miniz.c>
+
 std::wstring DOWNLOADING_MAP(L"Downloading Map");
 std::wstring WAITING_FOR_MAP_DOWNLOAD_URL(L"Waiting for map url from server");
 std::wstring FOUND_MAP_DOWNLOAD_URL(L"Found map download url");
 std::wstring DOWNLOADING_COMPLETE(L"Downloading complete");
 std::wstring RELOADING_MAPS(L"Reloading maps in memory");
+std::wstring UNZIPPING_MAP_DOWNLOAD(L"Unzipping map download");
+std::wstring FAILED_TO_OPEN_ZIP_FILE(L"Failed to open the zip file");
+std::wstring STILL_SEARCHING_FOR_MAP(L"Could not find maps from server, still searching");
 
-MapManager::MapManager() {
-}
+MapManager::MapManager() {}
 
 bool MapManager::hasMap(std::wstring mapName) {
 	DWORD dwBack;
@@ -28,9 +32,10 @@ bool MapManager::hasMap(std::wstring mapName) {
 
 int maxDownloads = 5;
 
-//TODO: make this only try a few times and give up completely till a rejoin occurs
+//this only try a few times and give up completely till a rejoin occurs
 void MapManager::requestMapDownloadUrl(SOCKET comm_socket, SOCKADDR_IN SenderAddr) {
 	if (mapDownloadUrl.empty() && maxDownloads > 0) {
+		maxDownloads--;
 		//only ask the server for the map url if we don't have one
 		H2ModPacket pack;
 		pack.set_type(H2ModPacket_Type_get_map_download_url);
@@ -40,7 +45,6 @@ void MapManager::requestMapDownloadUrl(SOCKET comm_socket, SOCKADDR_IN SenderAdd
 		pack.SerializeToArray(SendBuf, pack.ByteSize());
 
 		sendto(comm_socket, SendBuf, pack.ByteSize(), 0, (SOCKADDR*)&SenderAddr, sizeof(SenderAddr));
-		maxDownloads--;
 
 		delete[] SendBuf;
 	}
@@ -79,49 +83,71 @@ void MapManager::setCustomLobbyMessage(std::wstring newStatus) {
 	Sleep(750);
 }
 
-bool MapManager::isZipFile(std::string path) {
-	return path.substr(path.find_last_of(".") + 1) == "zip";
-}
+void MapManager::unzipArchive(std::wstring localPath, std::wstring mapsDir) {
+	mz_bool status;
+	mz_zip_archive zip_archive;
+	memset(&zip_archive, 0, sizeof(zip_archive));
 
-std::string MapManager::getFileName(const std::string& s) {
-	char sep = '/';
-
-#ifdef _WIN32
-	sep = '\\';
-#endif
-
-	size_t i = s.rfind(sep, s.length());
-	if (i != std::string::npos) {
-		return(s.substr(i + 1, s.length() - i));
+	status = mz_zip_reader_init_file(&zip_archive, std::string(localPath.begin(), localPath.end()).c_str(), 0);
+	if (!status) {
+		TRACE("Failed to open zip file, status=%d", status);
+		this->setCustomLobbyMessage(FAILED_TO_OPEN_ZIP_FILE);
+		return;
 	}
+	this->setCustomLobbyMessage(UNZIPPING_MAP_DOWNLOAD);
 
-	return("");
+	mz_uint numFiles = mz_zip_reader_get_num_files(&zip_archive);
+	for (int i = 0; i < (int)numFiles; i++) {
+
+		mz_zip_archive_file_stat file_stat;
+		if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat)) {
+			TRACE("mz_zip_reader_file_stat() failed!");
+			mz_zip_reader_end(&zip_archive);
+			return;
+		}
+
+		if (!mz_zip_reader_is_file_a_directory(&zip_archive, i)) {
+			std::string zipDest(mapsDir.begin(), mapsDir.end());
+			std::string zipEntryFileName(file_stat.m_filename);
+			zipDest += zipEntryFileName;
+			if (!mz_zip_reader_extract_to_file(&zip_archive, i, zipDest.c_str(), 0)) {
+				TRACE("Could not extract zip file");
+			}
+		}
+		else {
+			TRACE("nO Support to extract directories, cause I'm lazy");
+		}
+	}
+	mz_zip_reader_end(&zip_archive);
 }
 
-BOOL MapManager::downloadMap(std::string url, std::wstring mapName) {
+BOOL MapManager::downloadMap(std::wstring mapName) {
+	std::string url = this->mapDownloadUrl;
+	std::string type = this->mapDownloadType;
 	std::wstring unicodeUrl(url.begin(), url.end());
 
 	DWORD dwBack;
 	wchar_t* mapsDirectory = (wchar_t*)(h2mod->GetBase() + 0x482D70 + 0x2423C);
 
 	VirtualProtect(mapsDirectory, 4, PAGE_EXECUTE_READ, &dwBack);
-	std::wstring localPath(mapsDirectory);
+	std::wstring mapsDir(mapsDirectory);
+	std::wstring localPath(mapsDir);
 	VirtualProtect(mapsDirectory, 4, dwBack, NULL);
 
-	//TODO: since url's don't always contain the filename, this won't help
-	//std::string filename = this->getFileName(url);
-	localPath += mapName + L".map";
+	localPath += mapName + L"." + std::wstring(type.begin(), type.end());
 
 	this->setCustomLobbyMessage(DOWNLOADING_MAP);
 	//TODO: make async
-	//TODO: need to handle zips
 	HRESULT res = URLDownloadToFile(NULL, unicodeUrl.c_str(), localPath.c_str(), 0, NULL);
 
 	if (res == S_OK) {
 		this->setCustomLobbyMessage(DOWNLOADING_COMPLETE);
 		TRACE("Map downloaded");
-		if (isZipFile(url)) {
-			//TODo: unzip the file
+		//if we downloaded a zip file, unzip it
+		if (type == "zip") {
+			unzipArchive(localPath, mapsDir);
+			//delete any zip files in map folder
+			_wremove(localPath.c_str());
 		}
 
 		this->setCustomLobbyMessage(RELOADING_MAPS);
@@ -137,7 +163,6 @@ BOOL MapManager::downloadMap(std::string url, std::wstring mapName) {
 		TRACE("Other error: %d\n", res);
 	}
 
-	this->setCustomLobbyMessage(ERROR);
 	return false;
 }
 
@@ -147,6 +172,10 @@ std::wstring MapManager::getCustomLobbyMessage() {
 
 void MapManager::setMapDownloadUrl(std::string url) {
 	this->mapDownloadUrl = url;
+}
+
+void MapManager::setMapDownloadType(std::string type) {
+	this->mapDownloadType = type;
 }
 
 void MapManager::searchForMap() {
@@ -165,7 +194,7 @@ void MapManager::searchForMap() {
 				this->setCustomLobbyMessage(WAITING_FOR_MAP_DOWNLOAD_URL);
 				if (!this->mapDownloadUrl.empty()) {
 					this->setCustomLobbyMessage(FOUND_MAP_DOWNLOAD_URL);
-					if (downloadMap(this->mapDownloadUrl, mapName)) {
+					if (downloadMap(mapName)) {
 						//all done, complete
 						return;
 					}	else {
@@ -178,9 +207,9 @@ void MapManager::searchForMap() {
 			}
 
 			//map still isn't found try another way to find the map
+			this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP);
 			//TODO: use special search to try and find map by name
 
-			this->setCustomLobbyMessage(FOUND_MAP_DOWNLOAD_URL);
 		}
 	}
 }

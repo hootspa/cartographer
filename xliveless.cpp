@@ -3363,9 +3363,10 @@ LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicS
 
 	Check_Overlapped( pOverlapped );
 
+	//setup teamspeak client or server or both
 	if (voice_chat) {
 		//can be true if XNetCreateKey sets the extern bool server to true, this is always called before session create
-		//TODo: xnetcreatekey is not called on reconnect
+		//TODO: xnetcreatekey is not called on reconnect
 		if (isServer) {
 			TRACE("You are hosting a game");
 			isHost = true;
@@ -3374,6 +3375,11 @@ LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicS
 			TRACE("You are joining a game");
 			startClient(true);
 		}
+	}
+
+	//hack for peer hosted games
+	if (isServer) {
+		players->initPeerHostData(g_szUserName[0], xFakeXuid[0]);
 	}
 	return ERROR_IO_PENDING;
 }
@@ -4059,9 +4065,6 @@ void cleanupClientAndServer() {
 
 	//the user may not host a game again, so we unset this
 	isServer = false;
-
-	//so the socket can be reopened
-	customMapSocketOpen = false;
 
 	//remove any cached team speak users
 	tsUsers->empty();

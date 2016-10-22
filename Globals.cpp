@@ -14,7 +14,6 @@ bool microphoneEnabled = true;
 //always assume client is server unless they join a game which is called before xsessioncreate
 //which creates or connects to teh team speak server
 bool isServer = true;
-bool customMapSocketOpen = false;
 bool isLobby = true;
 
 CLIENT_CHAT_MODE clientChatMode = TEAM;

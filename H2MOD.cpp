@@ -607,10 +607,15 @@ int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 			TRACE("Server Membership Update: Player-index = %d", *(WORD *)(v6 - 2));
 			if (*(WORD *)v6 == 1)
 			{
+				//hack for xuid
 				WCHAR strw[8192];
+				char strw3[4096];
 				wsprintf(strw, L"%I64x", *(XUID*)(v6 + 2));
+				wcstombs(strw3, strw, 8192);
+				XUID id = _atoi64(strw3);
 				TRACE("Server Membership Update: Player-xuid = %s", strw);
 
+				players->updatePlayerId(*(WORD *)(v6 - 2), id);
 			}
 			if (*(BYTE *)(v6 + 16))	{
 				wchar_t* playerName = (wchar_t*)(v6 + 154);
@@ -619,15 +624,8 @@ int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 				TRACE_GAME_N("Server Membership Update: Player-name = %s", pplayerName);
 				TRACE_GAME_N("Server Membership Update: Player-team = %d", *(BYTE *)(v6 + 154 + 124));
 
-				//hack for xuid
-				WCHAR strw[8192];
-				char strw3[4096];
-				wsprintf(strw, L"%I64x", *(XUID*)(v6 + 2));
-				wcstombs(strw3, strw, 8192);
-				XUID id = _atoi64(strw3);
-
 				//update player cache
-				players->update(std::string(pplayerName), *(WORD *)(v6 - 2), *(BYTE *)(v6 + 154 + 124), id);
+				players->updatePlayerNameAndTeam(*(WORD *)(v6 - 2), std::string(pplayerName), *(BYTE *)(v6 + 154 + 124));
 
 			}
 			++v5;
@@ -644,216 +642,40 @@ typedef bool(__cdecl *membership_update_read_packet)(int a1, int a2, int a3);
 membership_update_read_packet membership_update_read_packet_method;
 
 bool __cdecl readMembershipUpdate(int a1, int a2, int a3) {
-	data_decode_integer dataDecodeInteger = getDataDecodeIntegerMethod();
-	data_decode_id dataDecodeId = getDataDecodeId();
-	data_decode_address dataDecodeAddress = getDataDecodeAddressMethod();
-	data_decode_string dataDecodeString = getDataDecodeStringMethod();
-	data_decode_bool dataDecodeBool = getDataDecodeBoolMethod();
-	can_join sub_45114C_method = getCanJoinMethod();
-	player_properties_detail_read_packet readPlayerPropertiesDetail = getPlayerPropertiesDetailReadMethod();
+	//decode all the data first, then read what you need below
+	bool result = membership_update_read_packet_method(a1, a2, a3);
 
-	bool v3; // bl@1
-	bool v4; // al@2
-	__int16 v5; // ax@5
-	__int16 v6; // cx@5
-	int v7; // edi@10
-	__int16 v8; // ax@12
-	__int16 v9; // ax@19
-	bool v10; // al@23
-	bool v11; // al@24
-	bool v12; // al@26
-	unsigned int v13; // eax@27
-	signed int v14; // ecx@28
-	bool v15; // al@38
-	unsigned int v16; // eax@39
-	signed int v17; // ecx@40
-	signed int v18; // ecx@42
-	int v19; // edi@50
-	__int16 v20; // ax@51
-	__int16 v21; // cx@52
-	__int16 v22; // ax@62
-	bool v23; // al@66
-	unsigned int v24; // eax@67
-	bool v25; // bl@70
-	bool v26; // al@72
-	bool v27; // bl@74
-	bool v28; // al@76
-	bool v29; // al@84
-	bool v30; // al@86
-	int v31; // eax@90
-	bool result; // al@92
-	signed int v33; // [sp+10h] [bp-4h]@9
-	signed int v34; // [sp+10h] [bp-4h]@49
+	int v19 = 0;
+	int v34 = 0;
 
-	v3 = 1;
-	dataDecodeId(a1, (int)"session-id", a3, 64);
-	*(DWORD *)(a3 + 8) = dataDecodeInteger(a1, (int)"update-number", 32);
-	TRACE("Client Membership Update: Update-number = %d", *(DWORD *)(a3 + 8));
-	if (dataDecodeBool(a1, (int)"complete-update")) {
-		*(DWORD *)(a3 + 12) = -1;
-		v4 = dataDecodeBool(a1, (int)"server-xuid-valid");
-		*(BYTE *)(a3 + 16) = v4;
-		if (v4)
-			dataDecodeId(a1, (int)"server-xuid", a3 + 24, 64);
-	} else {
-		*(DWORD *)(a3 + 12) = dataDecodeInteger(a1, (int)"incremental-update-number", 32);
-	}
-	*(WORD *)(a3 + 32) = dataDecodeInteger(a1, (int)"peer-count", 5);
-	v5 = dataDecodeInteger(a1, (int)"player-count", 5);
-	v6 = *(WORD *)(a3 + 32);
-	*(WORD *)(a3 + 34) = v5;
-	if (v6 < 0 || v6 > 34 || v5 < 0 || v5 > 32)	{
-		v3 = 0;
-	}	else {
-		v33 = 0;
-		if (v6 > 0)	{
-			v7 = a3 + 38;
-			do {
-				if (dataDecodeBool(a1, (int)"old-peer-exists"))	{
-					v8 = dataDecodeInteger(a1, (int)"old-peer-index", 5);
-					*(WORD *)(v7 - 2) = v8;
-					v3 = v3 && v8 >= 0 && v8 < 17;
-				}	else {
-					*(WORD *)(v7 - 2) = -1;
-				}
-				if (dataDecodeBool(a1, (int)"new-peer-exists")) {
-					v9 = dataDecodeInteger(a1, (int)"new-peer-index", 5);
-					*(WORD *)v7 = v9;
-					if (!v3 || v9 < 0 || v9 >= 17)
-						v3 = 0;
-				} else {
-					*(WORD *)v7 = -1;
-					if (!v3)
-						v3 = 0;
-				}
-				if (*(WORD *)(v7 - 2) != -1 || *(WORD *)v7 != -1)	{
-					v3 = 1;
-					dataDecodeAddress(a1, (int)"peer-address", v7 + 2);
-					v10 = dataDecodeBool(a1, (int)"peer-properties-updated");
-					*(BYTE *)(v7 + 38) = v10;
-					if (v10)
-					{
-						*(BYTE *)(v7 + 39) = dataDecodeBool(a1, (int)"peer-in-session");
-						v11 = dataDecodeBool(a1, (int)"peer-name-updated");
-						*(BYTE *)(v7 + 42) = v11;
-						if (v11)
-						{
-							dataDecodeString((void *)a1, (int)"peer-name", v7 + 44, 16);
-							dataDecodeString((void *)a1, (int)"peer-session-name", v7 + 76, 32);
-						}
-						v12 = dataDecodeBool(a1, (int)"peer-map-updated");
-						*(BYTE *)(v7 + 140) = v12;
-						if (v12)
-						{
-							*(DWORD *)(v7 + 142) = dataDecodeInteger(a1, (int)"peer-map-status", 3);
-							v13 = dataDecodeInteger(a1, (int)"peer-map-progress-percentage", 7);
-							*(DWORD *)(v7 + 146) = v13;
-							v3 = v3
-								&& (v14 = *(DWORD *)(v7 + 142), v14 >= 0)
-								&& v14 < 6
-								&& (v13 & 0x80000000) == 0
-								&& (signed int)v13 <= 100;
-						}
-						v15 = dataDecodeBool(a1, (int)"peer-connection-updated");
-						*(BYTE *)(v7 + 150) = v15;
-						if (v15)
-						{
-							dataDecodeId(a1, (int)"estimated-downstream-bandwidth-bps", v7 + 154, 32);
-							dataDecodeId(a1, (int)"estimated-upstream-bandwidth-bps", v7 + 158, 32);
-							*(DWORD *)(v7 + 162) = dataDecodeInteger(a1, (int)"nat-type", 2);
-							*(DWORD *)(v7 + 166) = dataDecodeInteger(a1, (int)"peer-connectivity-mask", 17);
-							*(DWORD *)(v7 + 170) = dataDecodeInteger(a1, (int)"peer-latency-min", 11);
-							*(DWORD *)(v7 + 174) = dataDecodeInteger(a1, (int)"peer-latency-est", 11);
-							v16 = dataDecodeInteger(a1, (int)"peer-latency-max", 11);
-							*(DWORD *)(v7 + 178) = v16;
-							v3 = v3
-								&& (v17 = *(DWORD *)(v7 + 170), v17 >= 0)
-								&& v17 <= 2000
-								&& (v18 = *(DWORD *)(v7 + 174), v18 >= 0)
-								&& v18 <= 2000
-								&& (v16 & 0x80000000) == 0
-								&& (signed int)v16 <= 2000;
-						}
-					}
-					v7 += 184;
-					++v33;
-				}
-			} while (v33 < *(WORD *)(a3 + 32));
-		}
-		v34 = 0;
-		if (*(WORD *)(a3 + 34) > 0) {
-			v19 = a3 + 6304;
-			do {
-				*(WORD *)(v19 - 12) = dataDecodeInteger(a1, (int)"player-index", 4);
-				TRACE("Client Membership Update: Player-index = %d", *(WORD *)(v19 - 12));
-				v20 = dataDecodeInteger(a1, (int)"update-type", 2);
-				*(WORD *)(v19 - 10) = v20;
-				v3 = v3 && (v21 = *(WORD *)(v19 - 12), v21 >= 0) && v21 < 16 && v20 >= 0 && v20 < 3;
-				if (v20 == 1)	{
-					dataDecodeId(a1, (int)"identifier", v19 - 8, 64);
+	if (*(WORD *)(a3 + 34) > 0) {
+		v19 = a3 + 6304;
+		do {
+			TRACE("Client Membership Update: Player-index = %d", *(WORD *)(v19 - 12));
+			if (*(XUID*)(v19 - 8) > 0) {
+				//hack for xuid
+				WCHAR strw[8192];
+				char strw3[4096];
+				wsprintf(strw, L"%I64x", *(XUID*)(v19 - 8));
+				wcstombs(strw3, strw, 8192);
+				XUID id = _atoi64(strw3);
+				TRACE("Client Membership Update: Player-xuid = %s", strw);
+				players->updatePlayerId(*(WORD *)(v19 - 12), id);
+			}
+			if (*(wchar_t*)(v19 + 144) != L'\0') {
+				//player name and team index are decoded at this point
+				wchar_t* playerName = (wchar_t*)(v19 + 144);
+				char pplayerName[32];
+				wcstombs(pplayerName, playerName, 32);
+				TRACE_GAME_N("Client Membership Update: Player-name = %s", pplayerName);
+				TRACE_GAME_N("Client Membership Update: Player-team = %d", *(BYTE *)(v19 + 144 + 124));
 
-					WCHAR strw[8192];
-					wsprintf(strw, L"%I64x", *(XUID*)(v19 - 8));
-					TRACE("Client Membership Update: Player-xuid = %s", strw);
-
-					*(WORD *)v19 = dataDecodeInteger(a1, (int)"peer-index", 5);
-					//TRACE("Membership Update: Peer-index = %d", *(WORD *)v19);
-					*(WORD *)(v19 + 2) = dataDecodeInteger(a1, (int)"peer-user-index", 2);
-					//this seems to always be 0
-					//TRACE("Membership Update: Peer-user-index = %d", *(WORD *)(v19 + 2));
-					*(WORD *)(v19 - 8 + 12) = dataDecodeInteger(a1, (int)"player-flags", 1);
-					v3 = v3 && *(WORD *)v19 >= 0 && *(WORD *)v19 < 17 && (v22 = *(WORD *)(v19 + 2), v22 >= 0) && v22 < 4;
-				}
-				v23 = dataDecodeBool(a1, (int)"properties-valid");
-				*(BYTE *)(v19 + 6) = v23;
-				if (v23) {
-					v24 = dataDecodeInteger(a1, (int)"controller-index", 2);
-					*(DWORD *)(v19 + 8) = v24;
-					v25 = v3 && (v24 & 0x80000000) == 0 && (signed int)v24 < 4;
-					v26 = readPlayerPropertiesDetail(a1, v19 + 12);
-					v27 = v25 && v26;
-					v28 = readPlayerPropertiesDetail(a1, v19 + 144);
-
-					//player name and team index are decoded at this point
-					wchar_t* playerName = (wchar_t*)(v19 + 144);
-					char pplayerName[32];
-					wcstombs(pplayerName, playerName, 32);
-					TRACE_GAME_N("Client Membership Update: Player-name = %s", pplayerName);
-					TRACE_GAME_N("Client Membership Update: Player-team = %d", *(BYTE *)(v19 + 144 + 124));
-
-					//hack for xuid
-					WCHAR strw[8192];
-					char strw3[4096];
-					wsprintf(strw, L"%I64x", *(XUID*)(v19 - 8));
-					wcstombs(strw3, strw, 8192);
-					XUID id = _atoi64(strw3);
-
-					//update player cache
-					players->update(std::string(pplayerName), *(WORD *)(v19 - 12), *(BYTE *)(v19 + 144 + 124), id);
-
-					v3 = v27 && v28;
-					*(DWORD *)(v19 + 276) = dataDecodeInteger(a1, (int)"player-voice", 32);
-					*(DWORD *)(v19 + 280) = dataDecodeInteger(a1, (int)"player-text-chat", 32);
-				}
-				v19 += 296;
-				++v34;
-			} while (v34 < *(WORD *)(a3 + 34));
-		}
-	}
-	v29 = dataDecodeBool(a1, (int)"leader-updated");
-	*(BYTE *)(a3 + 15764) = v29;
-	if (v29)
-		*(DWORD *)(a3 + 15768) = dataDecodeInteger(a1, (int)"leader-peer_index", 5);
-	v30 = dataDecodeBool(a1, (int)"virtual-couch-host-updated");
-	*(BYTE *)(a3 + 15772) = v30;
-	if (v30)
-		*(DWORD *)(a3 + 15776) = dataDecodeInteger(a1, (int)"virtual-couch-host-peer-index", 5);
-	result = 0;
-	if (v3 && !sub_45114C_method(a1))
-	{
-		v31 = *(DWORD *)(a3 + 12);
-		if (v31 == -1 || v31 < *(DWORD *)(a3 + 8))
-			result = 1;
+				//update player cache
+				players->updatePlayerNameAndTeam(*(WORD *)(v19 - 12), std::string(pplayerName), *(BYTE *)(v19 + 144 + 124));
+			}
+			v19 += 296;
+			++v34;
+		} while (v34 < *(WORD *)(a3 + 34));
 	}
 	return result;
 }
@@ -1036,6 +858,7 @@ int __stdcall calls_session_boot_sub_1cce9b(void* thisx, int a2, char a3) {
 }
 
 void H2MOD::kick_player(int playerIndex) {
+	//only works for hosts
 	DWORD* ptr = (DWORD*)(((char*)h2mod->GetBase()) + 0x420FE8);
 	TRACE_GAME_N("about to kick player index=%d", playerIndex);
 	calls_session_boot_method((DWORD*)(*ptr), playerIndex, (char)0x01);
@@ -1140,6 +963,7 @@ show_download_dialog show_download_dialog_method;
 
 int __stdcall showDownloadDialog(BYTE* thisx) {
 	wchar_t* currentMapName = (wchar_t*)(h2mod->GetBase() + 0x97737C);
+	//TODO: expensive, consider just working with the existing currentMapName pointer
 	std::wstring ucurrentMapName(currentMapName);
 
 	BOOL excludeMaps = ucurrentMapName == L"Custom Map";

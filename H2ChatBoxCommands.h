@@ -11,8 +11,8 @@ public:
 	void listBannedPlayers();
 	void mute(const char*, bool);
 	void unmute(const char*);
-	void ban(char*);
-	void kick(char*);
+	void ban(const char*);
+	void kick(const char*);
 	void kick(int);
 	void setChatMode(CLIENT_CHAT_MODE);
 	void handle_command(std::string);

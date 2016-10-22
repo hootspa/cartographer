@@ -43,7 +43,7 @@ public:
 	bool isBannedXuid(XUID id);
 	bool isMuteBan(std::string player);
 	bool isValidAddressForAllowedCountries(IN_ADDR possibleBannedAddress);
-	void banPlayer(char* gamertag, IN_ADDR ipAddress, XUID xboxId);
+	void banPlayer(const char* gamertag, IN_ADDR ipAddress, XUID xboxId);
 	void fillBannedPlayerDisplayStrList(std::vector<std::string> displayList);
 private:
 	BanUtility() {};

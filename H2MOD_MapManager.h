@@ -1,8 +1,6 @@
 #ifndef MAP_DOWNLOAD_H
 #define MAP_DOWNLOAD_H
 
-
-
 class MapManager {
 public:
 	MapManager();
@@ -13,17 +11,18 @@ public:
 	void setCustomLobbyMessage(std::wstring newStatus);
 	std::wstring getCustomLobbyMessage();
 	void setMapDownloadUrl(std::string url);
+	void setMapDownloadType(std::string type);
 	void requestMapDownloadUrl(SOCKET comm_socket, SOCKADDR_IN SenderAddr);
 	BOOL hasCheckedMapAlready(std::wstring mapName);
 
 private:
-	bool hasMap(std::wstring mapName);
-	bool isZipFile(std::string path);
-	std::string getFileName(const std::string& s);
-	BOOL downloadMap(std::string url, std::wstring mapName);
+	bool hasMap(std::wstring mapName); 
+	void unzipArchive(std::wstring localPath, std::wstring mapsDir);
+	BOOL downloadMap(std::wstring mapName);
 
 	std::wstring currentMap;
 	std::string mapDownloadUrl;
+	std::string mapDownloadType;
 
 	std::wstring customLobbyMessage;
 
