@@ -4,6 +4,7 @@
 struct H2Player {
 	std::string name;
 	int index = -1;
+	int peer;
 	int team;
 	XUID xuid;
 
@@ -15,6 +16,7 @@ struct H2Player {
 		index = obj.index;
 		team = obj.team;
 		xuid = obj.xuid;
+		peer = obj.peer;
 	}
 };
 
@@ -24,7 +26,7 @@ public:
 	H2Player getPlayer(int playerIndex);
 	H2Player getPlayer(XUID playerXuid);
 	void getPlayersForTeam(H2Player players[], int team);
-	void updatePlayerId(int playerIndex, XUID playerId);
+	void updatePlayerId(int playerIndex, XUID playerId, int peerIndex);
 	void updatePlayerNameAndTeam(int playerIndex, std::string playerName, int playerTeam);
 	void clear();
 	void initPeerHostData(char* arr, XUID id);
@@ -34,6 +36,7 @@ private:
 
 	std::unordered_map<XUID, int> xuidToPlayerIndexMap;
 	std::unordered_map<int, H2Player> indexToPlayersMap;
+	std::unordered_map<int, H2Player> peersToPlayersMap;
 	std::unordered_map<std::string, H2Player> nameToPlayersMap;
 	std::unordered_map<int, H2Player[]> teamToPlayersMap;
 };

@@ -127,6 +127,7 @@ void receiveGameUpdates() {
 					mapDownloadUrl->set_url(customMapZipDownloadLink);
 					mapDownloadUrl->set_type("zip");
 				}	else {
+					TRACE_GAME_N("[h2mod-network] no custom map downloading urls set");
 				}
 
 				char* SendBuf = new char[pack.ByteSize()];

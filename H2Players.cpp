@@ -6,7 +6,7 @@ void H2Players::initPeerHostData(char* gamertag, XUID id) {
 	//till someone joins so the events we populate data don't happen till someone joins. The adverse effect is this 
 	//data structure won't be available immediately (so anything using this structure won't find anything), so we 
 	//workaround it here by pushing the hosts player info into the structure manually
-	updatePlayerId(0, id);
+	updatePlayerId(0, id, 0);
 	updatePlayerNameAndTeam(0, gamertag, h2mod->get_local_team_index());
 }
 
@@ -26,7 +26,7 @@ void H2Players::getPlayersForTeam(H2Player players[], int team) {
 	//TODO:
 }
 
-void H2Players::updatePlayerId(int playerIndex, XUID playerXuid) {
+void H2Players::updatePlayerId(int playerIndex, XUID playerXuid, int peerIndex) {
 	H2Player possiblePlayer = indexToPlayersMap[playerIndex];
 	//-1 = empty struct in this case
 	if (possiblePlayer.index != -1) {
@@ -39,8 +39,10 @@ void H2Players::updatePlayerId(int playerIndex, XUID playerXuid) {
 		H2Player player = H2Player();
 		player.index = playerIndex;
 		player.xuid = playerXuid;
+		player.peer = peerIndex;
 
 		indexToPlayersMap[playerIndex] = player;
+		peersToPlayersMap[peerIndex] = player;
 		xuidToPlayerIndexMap[playerXuid] = playerIndex;
 	}
 }

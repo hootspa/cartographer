@@ -595,7 +595,7 @@ membership_update_write_packet membership_update_write_packet_method;
 
 int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 	//dataEncodeInteger((void*)a1, (int)"update-number", *(DWORD *)(a3 + 8), 32);
-	TRACE("Server Membership Update: Update-number = %d", *(DWORD *)(a3 + 8));
+	TRACE_GAME_N("Server Membership Update: Update-number = %d", *(DWORD *)(a3 + 8));
 	signed int v5; // ebx@21
 	int v6; // edi@22
 	v5 = 0;
@@ -604,18 +604,20 @@ int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 	{
 		v6 = a3 + 6294;
 		do {
-			TRACE("Server Membership Update: Player-index = %d", *(WORD *)(v6 - 2));
+			int playerIndex = *(WORD *)(v6 - 2);
+			TRACE_GAME_N("Server Membership Update: Player-index = %d", playerIndex);
 			if (*(WORD *)v6 == 1)
 			{
+				int peerIndex = *(WORD *)(v6 + 10);
 				//hack for xuid
 				WCHAR strw[8192];
 				char strw3[4096];
 				wsprintf(strw, L"%I64x", *(XUID*)(v6 + 2));
 				wcstombs(strw3, strw, 8192);
 				XUID id = _atoi64(strw3);
-				TRACE("Server Membership Update: Player-xuid = %s", strw);
+				TRACE_GAME_N("Server Membership Update: Player-xuid = %s, Peer-index = %d", strw, peerIndex);
 
-				players->updatePlayerId(*(WORD *)(v6 - 2), id);
+				players->updatePlayerId(playerIndex, id, peerIndex);
 			}
 			if (*(BYTE *)(v6 + 16))	{
 				wchar_t* playerName = (wchar_t*)(v6 + 154);
@@ -625,7 +627,7 @@ int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 				TRACE_GAME_N("Server Membership Update: Player-team = %d", *(BYTE *)(v6 + 154 + 124));
 
 				//update player cache
-				players->updatePlayerNameAndTeam(*(WORD *)(v6 - 2), std::string(pplayerName), *(BYTE *)(v6 + 154 + 124));
+				players->updatePlayerNameAndTeam(playerIndex, std::string(pplayerName), *(BYTE *)(v6 + 154 + 124));
 
 			}
 			++v5;
@@ -651,16 +653,17 @@ bool __cdecl readMembershipUpdate(int a1, int a2, int a3) {
 	if (*(WORD *)(a3 + 34) > 0) {
 		v19 = a3 + 6304;
 		do {
-			TRACE("Client Membership Update: Player-index = %d", *(WORD *)(v19 - 12));
+			TRACE_GAME_N("Client Membership Update: Player-index = %d", *(WORD *)(v19 - 12));
 			if (*(XUID*)(v19 - 8) > 0) {
+				int peerIndex = *(WORD *)v19;
 				//hack for xuid
 				WCHAR strw[8192];
 				char strw3[4096];
 				wsprintf(strw, L"%I64x", *(XUID*)(v19 - 8));
 				wcstombs(strw3, strw, 8192);
 				XUID id = _atoi64(strw3);
-				TRACE("Client Membership Update: Player-xuid = %s", strw);
-				players->updatePlayerId(*(WORD *)(v19 - 12), id);
+				TRACE_GAME_N("Client Membership Update: Player-xuid = %s, Peer-index = %d", strw, peerIndex);
+				players->updatePlayerId(*(WORD *)(v19 - 12), id, peerIndex);
 			}
 			if (*(wchar_t*)(v19 + 144) != L'\0') {
 				//player name and team index are decoded at this point
@@ -961,15 +964,23 @@ int H2MOD::write_chat_literal(const wchar_t* data) {
 typedef int(__stdcall *show_download_dialog)(BYTE* thisx);
 show_download_dialog show_download_dialog_method;
 
+std::wstring CUSTOM_MAP = L"Custom Map";
+wchar_t empty2 = '\0';
+
 int __stdcall showDownloadDialog(BYTE* thisx) {
 	wchar_t* currentMapName = (wchar_t*)(h2mod->GetBase() + 0x97737C);
+
+	DWORD dwBack;
+	VirtualProtect(currentMapName, 4, PAGE_EXECUTE_READWRITE, &dwBack);	
 	//TODO: expensive, consider just working with the existing currentMapName pointer
 	std::wstring ucurrentMapName(currentMapName);
 
-	BOOL excludeMaps = ucurrentMapName == L"Custom Map";
-	if (!ucurrentMapName.empty() && !mapManager->hasCheckedMapAlready(ucurrentMapName) && !excludeMaps) {
+	BOOL excludeMaps = wcscmp(currentMapName, CUSTOM_MAP.c_str()) == 0;
+	if (!ucurrentMapName.empty() && !excludeMaps && !mapManager->hasCheckedMapAlready(currentMapName)) {
 		mapManager->startMapDownload();
 	}
+	VirtualProtect(currentMapName, 4, dwBack, NULL);
+
 	//do nothing instead, so people don't get kicked from the game
 	return 0;
 }

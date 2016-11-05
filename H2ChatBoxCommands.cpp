@@ -33,15 +33,15 @@ void ChatBoxCommands::setChatMode(CLIENT_CHAT_MODE mode) {
 
 void ChatBoxCommands::kick(const char* playerName) {
 	H2Player player = players->getPlayer(playerName);
-	int playerIndex = player.index;
+	int peerIndex = player.peer;
 
-	if (playerIndex == -1) {
+	if (peerIndex == -1) {
 		h2mod->write_inner_chat_dynamic(L"Could not find player index");
 		return;
 	}
 
-	TRACE_GAME_N("About to kick player index %d for player name %s", playerIndex, playerName);
-	h2mod->kick_player(playerIndex);
+	TRACE_GAME_N("About to kick player index %d for player name %s", peerIndex, playerName);
+	h2mod->kick_player(peerIndex);
 }
 
 void ChatBoxCommands::kick(int playerIndex) {
