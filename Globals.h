@@ -59,4 +59,22 @@ std::vector<std::string> split(const std::string &s, char delim);
 int stripWhitespace(wchar_t *inputStr);
 
 extern H2Players* players;
+
+template<class T>
+class InstancesCount {
+	static int instance_count;
+public:
+	InstancesCount() {
+		instance_count++;
+	}
+	~InstancesCount() {
+		instance_count--;
+	}
+	static void print() {
+		TRACE_GAME_N("Instance type %s count %d", typeid(T).name(), instance_count);
+	}
+};
+
+template<class T>
+int InstancesCount<T>::instance_count = 0;
 #endif

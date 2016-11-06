@@ -32,7 +32,7 @@ void ChatBoxCommands::setChatMode(CLIENT_CHAT_MODE mode) {
 }
 
 void ChatBoxCommands::kick(const char* playerName) {
-	H2Player player = players->getPlayer(playerName);
+	H2Player& player = players->getPlayer(playerName);
 	int peerIndex = player.peer;
 
 	if (peerIndex == -1) {
@@ -82,37 +82,13 @@ void ChatBoxCommands::printDistance(int player1, int player2) {
 }
 
 void ChatBoxCommands::listPlayers() {
-	//we have to iterate all 16 player spots, since when people leave a game, other people in game don't occupy their spot
 	TRACE("Team play on: %d", h2mod->is_team_play());
-	for (int i = 0; i < 15; i++) {
-		H2Player player = players->getPlayer(i);
-		if (player.index == -1) {
-			wchar_t* unicodeGamertag = new wchar_t[64];
-			mbstowcs(unicodeGamertag, player.name.c_str(), 64);
-
-			const char* hostnameOrIP = inet_ntoa(h2mod->get_player_ip(i));
-			/*
-			TODO:
-			bool resetDynamicBase = false;
-			if (i != nameToPlayerIndexMap[gamertag]) {
-			resetDynamicBase = true;
-			}
-
-			float xPos = h2mod->get_player_x(i, resetDynamicBase);
-			float yPos = h2mod->get_player_y(i, resetDynamicBase);
-			float zPos = h2mod->get_player_z(i, resetDynamicBase);*/
-
-			std::wstringstream oss;
-			oss << "Player " << i << ":" << unicodeGamertag << "/" << hostnameOrIP;// << "/x=" << xPos << ",y=" << yPos << ",z=" << zPos;
-			std::wstring playerLogLine = oss.str();
-			h2mod->write_inner_chat_dynamic(playerLogLine.c_str());
-		}
-	}
+	players->print();
 }
 
 void ChatBoxCommands::ban(const char* gamertag) {
 	//first get all the unique properties about the player
-	H2Player player = players->getPlayer(gamertag);
+	H2Player& player = players->getPlayer(gamertag);
 	int playerIndex = player.index;
 	XUID playerXuid = player.index;
 	IN_ADDR playerIp = h2mod->get_player_ip(playerIndex);
@@ -297,24 +273,23 @@ void ChatBoxCommands::handle_command(std::string command) {
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			H2Player player = players->getPlayer(firstArg.c_str());
+			H2Player& player = players->getPlayer(firstArg.c_str());
 
 			std::wstringstream oss;
 			oss << "Player " << firstArg.c_str() << " index is = " << player.index;
 			h2mod->write_inner_chat_dynamic(oss.str().c_str());
 		}
-		else if (firstCommand == "$start") {
+		else if (firstCommand == "$getpeerindex") {
 			if (splitCommands.size() != 2) {
-				h2mod->write_inner_chat_dynamic(L"Invalid $start command - server only, usage - $start script_name");
+				h2mod->write_inner_chat_dynamic(L"Invalid $getpeerindex command, usage - $getplayerindex player_name");
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *scriptName = new char[firstArg.length() + 1];
-			strcpy(scriptName, firstArg.c_str());
+			H2Player& player = players->getPlayer(firstArg.c_str());
 
-			//TODO: 
-
-			delete[] scriptName;
+			std::wstringstream oss;
+			oss << "Peer " << firstArg.c_str() << " index is = " << player.peer;
+			h2mod->write_inner_chat_dynamic(oss.str().c_str());
 		}
 		else if (firstCommand == "$muteall") {
 			if (splitCommands.size() != 1) {
@@ -323,10 +298,11 @@ void ChatBoxCommands::handle_command(std::string command) {
 			}
 
 			for (int i = 0; i < 15; i++) {
-				H2Player player = players->getPlayer(i);
+				H2Player& player = players->getPlayer(i);
 
 				if (player.index != -1) {
-					mute(player.name.c_str(), true);
+					//TODO: fix
+					//mute(player.name.c_str(), true);
 				}
 			}
 		}
@@ -337,10 +313,11 @@ void ChatBoxCommands::handle_command(std::string command) {
 			}
 
 			for (int i = 0; i < 15; i++) {
-				H2Player player = players->getPlayer(i);
+				H2Player& player = players->getPlayer(i);
 
 				if (player.index != -1) {
-					unmute(player.name.c_str());
+					//TODO: fix
+					//unmute(player.name.c_str());
 				}
 			}
 		}
@@ -352,6 +329,10 @@ void ChatBoxCommands::handle_command(std::string command) {
 
 			mapManager->reloadMaps();
 		}
+		else if (firstCommand == "$printmemory") {
+
+			//InstancesCount<H2Player>::print();
+		}
 		else if (firstCommand == "$spawn") {
 			if (splitCommands.size() != 2) {
 				h2mod->write_inner_chat_dynamic(L"Invalid command, usage $spawn ");
@@ -359,12 +340,10 @@ void ChatBoxCommands::handle_command(std::string command) {
 			}
 
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
 
-			printf("string object_datum = %s", cstr);
+			printf("string object_datum = %s", firstArg.c_str());
 
-			unsigned int object_datum = strtoul(cstr, NULL, 0);
+			unsigned int object_datum = strtoul(firstArg.c_str(), NULL, 0);
 			printf("object_datum: %08X\n", object_datum);
 			TRACE_GAME("object_datum = %08X", object_datum);
 

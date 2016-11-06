@@ -59,6 +59,7 @@ extern CHAR g_szUserName[4][16+1];
 extern UINT g_online;
 extern UINT g_port;
 extern UINT g_debug;
+extern UINT x_delay;
 extern CHAR g_profileDirectory[];
 extern UINT voice_chat;
 extern CHAR customMapDownloadLink[128];
@@ -3286,6 +3287,12 @@ int WINAPI XLiveInitializeEx (void * pXii, DWORD dwVersion)
   return 0;
 }
 
+static wchar_t* charToWChar(const char* text) {
+	size_t size = strlen(text) + 1;
+	wchar_t* wa = new wchar_t[size];
+	mbstowcs(wa, text, size);
+	return wa;
+}
 
 // #5300: XSessionCreate
 LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicSlots, DWORD dwMaxPrivateSlots, ULONGLONG *pqwSessionNonce, PXSESSION_INFO pSessionInfo, PXOVERLAPPED pOverlapped, HANDLE *phEnum )
@@ -3377,9 +3384,10 @@ LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicS
 		}
 	}
 
-	//hack for peer hosted games
 	if (isServer) {
-		players->initPeerHostData(g_szUserName[0], xFakeXuid[0]);
+		wchar_t* pp = charToWChar(g_szUserName[0]);
+		//hack for peer hosted games
+		players->initPeerHostData(pp, xFakeXuid[0]);
 	}
 	return ERROR_IO_PENDING;
 }

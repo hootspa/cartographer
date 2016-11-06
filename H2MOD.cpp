@@ -621,13 +621,11 @@ int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 			}
 			if (*(BYTE *)(v6 + 16))	{
 				wchar_t* playerName = (wchar_t*)(v6 + 154);
-				char pplayerName[32];
-				wcstombs(pplayerName, playerName, 32);
-				TRACE_GAME_N("Server Membership Update: Player-name = %s", pplayerName);
+				TRACE_GAME("Server Membership Update: Player-name = %s", playerName);
 				TRACE_GAME_N("Server Membership Update: Player-team = %d", *(BYTE *)(v6 + 154 + 124));
 
 				//update player cache
-				players->updatePlayerNameAndTeam(playerIndex, std::string(pplayerName), *(BYTE *)(v6 + 154 + 124));
+				players->updatePlayerNameAndTeam(playerIndex, playerName, *(BYTE *)(v6 + 154 + 124));
 
 			}
 			++v5;
@@ -650,6 +648,16 @@ bool __cdecl readMembershipUpdate(int a1, int a2, int a3) {
 	int v19 = 0;
 	int v34 = 0;
 
+	if (*(WORD *)(a3 + 32) > 0) {
+		int v7 = a3 + 38;
+		signed int v32 = 0;
+		do {
+			//TODO: get more peer information
+			v7 += 184;
+			++v32;
+		} while (v32 < *(WORD *)(a3 + 32));
+	}
+
 	if (*(WORD *)(a3 + 34) > 0) {
 		v19 = a3 + 6304;
 		do {
@@ -668,13 +676,11 @@ bool __cdecl readMembershipUpdate(int a1, int a2, int a3) {
 			if (*(wchar_t*)(v19 + 144) != L'\0') {
 				//player name and team index are decoded at this point
 				wchar_t* playerName = (wchar_t*)(v19 + 144);
-				char pplayerName[32];
-				wcstombs(pplayerName, playerName, 32);
-				TRACE_GAME_N("Client Membership Update: Player-name = %s", pplayerName);
+				TRACE_GAME("Client Membership Update: Player-name = %s", playerName);
 				TRACE_GAME_N("Client Membership Update: Player-team = %d", *(BYTE *)(v19 + 144 + 124));
 
 				//update player cache
-				players->updatePlayerNameAndTeam(*(WORD *)(v19 - 12), std::string(pplayerName), *(BYTE *)(v19 + 144 + 124));
+				players->updatePlayerNameAndTeam(*(WORD *)(v19 - 12), playerName, *(BYTE *)(v19 + 144 + 124));
 			}
 			v19 += 296;
 			++v34;
