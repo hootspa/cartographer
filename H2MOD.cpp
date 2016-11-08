@@ -897,6 +897,7 @@ void H2MOD::write_inner_chat_dynamic(const wchar_t* data) {
 	int v12 = v10 % 30;
 
 	if (*((DWORD *)v5 + v10 % 30 + 4)) {
+		//TODO: caused crash for tweek?
 		HeapFree(GetProcessHeap(), 0, ((LPVOID *)v5 + v11 + 4));
 	}
 	//size in bytes

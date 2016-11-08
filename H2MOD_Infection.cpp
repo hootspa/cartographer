@@ -48,12 +48,11 @@ void Infection::FindZombie()
 
 	}
 
-	zombie = rand() % (h2mod->NetworkPlayers.size());
-	zombie = rand() % (h2mod->NetworkPlayers.size());
-
 	int i = 0;
 	if (h2mod->NetworkPlayers.size() > 0)
 	{
+		zombie = rand() % (h2mod->NetworkPlayers.size());
+		zombie = rand() % (h2mod->NetworkPlayers.size());
 		for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it)
 		{
 			InfectionPlayer *nPlayer = new InfectionPlayer;
