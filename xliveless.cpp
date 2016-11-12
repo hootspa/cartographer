@@ -4082,6 +4082,8 @@ void cleanupClientAndServer() {
 
 	//leaving game, so don't keep existing download url
 	mapManager->resetMapDownloadUrl();
+
+	overrideUnicodeMessage = false;
 }
 
 

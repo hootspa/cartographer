@@ -215,6 +215,8 @@ void runServer() {
 
 		//receive data from players (non blocking)
 		receiveGameUpdates();
+
+		Sleep(500);
 	}
 }
 
@@ -385,7 +387,7 @@ void runClient() {
 			}
 		}
 
-		Sleep(1);
+		Sleep(500);
 	}
 }
 

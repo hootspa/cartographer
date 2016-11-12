@@ -15,6 +15,7 @@ bool microphoneEnabled = true;
 //which creates or connects to teh team speak server
 bool isServer = true;
 bool isLobby = true;
+bool overrideUnicodeMessage = false;
 
 CLIENT_CHAT_MODE clientChatMode = TEAM;
 

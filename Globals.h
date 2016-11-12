@@ -49,6 +49,7 @@ extern IN_ADDR clientMachineAddress;
 extern bool isServer;
 extern bool microphoneEnabled;
 extern bool isLobby;
+extern bool overrideUnicodeMessage;
 extern CLIENT_CHAT_MODE clientChatMode;
 extern ChatBoxCommands* commands;
 

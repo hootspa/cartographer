@@ -982,6 +982,8 @@ int __stdcall showDownloadDialog(BYTE* thisx) {
 	//TODO: expensive, consider just working with the existing currentMapName pointer
 	std::wstring ucurrentMapName(currentMapName);
 
+	overrideUnicodeMessage = true;
+
 	BOOL excludeMaps = wcscmp(currentMapName, CUSTOM_MAP.c_str()) == 0;
 	if (!ucurrentMapName.empty() && !excludeMaps && !mapManager->hasCheckedMapAlready(currentMapName)) {
 		mapManager->startMapDownload();
@@ -1586,21 +1588,23 @@ std::wstring EMPTY_STR(L"");
 
 //lets you follow the call path of any string that is displayed (in a debugger)
 signed int __cdecl stringDisplayHook(int a3, unsigned int a4, int a5, int a6) {
-	wchar_t* temp = (wchar_t*)a5;
-	if (temp[0] != L' ') {
-		//std::wstring tempStr(temp);
-		/*
-		if (tempStr == L"") {
-			__debugbreak();
-		}*/
-		//TRACE("String=%s", temp);
-		//if (wcscmp(temp, WAITING_ORG.c_str()) == 0) {
-			//return string_display_hook_method(a3, a4, (int)(WAITING_REPLACE.c_str()), a6);
-		//}
-		if (wcscmp(temp, YOU_FAILED_TO_LOAD_MAP_ORG.c_str()) == 0 && mapManager->getCustomLobbyMessage() != EMPTY_STR) {
-			//if we detect that we failed to load the map, we display different strings only for the duration of
-			//this specific string being displayed
-			return string_display_hook_method(a3, a4, (int)(mapManager->getCustomLobbyMessage().c_str()), a6);
+	if (overrideUnicodeMessage) {
+		wchar_t* temp = (wchar_t*)a5;
+		if (temp[0] != L' ') {
+			//std::wstring tempStr(temp);
+			/*
+			if (tempStr == L"") {
+				__debugbreak();
+			}*/
+			//TRACE("String=%s", temp);
+			//if (wcscmp(temp, WAITING_ORG.c_str()) == 0) {
+				//return string_display_hook_method(a3, a4, (int)(WAITING_REPLACE.c_str()), a6);
+			//}
+			if (wcscmp(temp, YOU_FAILED_TO_LOAD_MAP_ORG.c_str()) == 0 && mapManager->getCustomLobbyMessage() != EMPTY_STR) {
+				//if we detect that we failed to load the map, we display different strings only for the duration of
+				//this specific string being displayed
+				return string_display_hook_method(a3, a4, (int)(mapManager->getCustomLobbyMessage().c_str()), a6);
+			}
 		}
 	}
 	return string_display_hook_method(a3, a4, a5, a6);
@@ -1624,6 +1628,13 @@ char __stdcall sendTextChat(char* thisx, int a2, int a3, char a4, char a5) {
 		return send_text_chat_method(thisx, a2, a3, a4, a5);
 	}
 	return ' ';
+}
+
+typedef BOOL(__stdcall *is_debugger_present)();
+is_debugger_present is_debugger_present_method;
+
+BOOL __stdcall isDebuggerPresent() {
+	return false;
 }
 
 void H2MOD::ApplyHooks()
@@ -1662,13 +1673,10 @@ void H2MOD::ApplyHooks()
 
 		pconnect_establish_write = (tconnect_establish_write)DetourFunc((BYTE*)this->GetBase() + 0x1F1A2D, (BYTE*)connect_establish_write, 5);
 		VirtualProtect(pconnect_establish_write, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
 		//lobby chatbox
 		write_chat_text_method = (write_chat_text)DetourClassFunc((BYTE*)this->GetBase() + 0x238759, (BYTE*)write_chat_hook, 8);
 		VirtualProtect(write_chat_text_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
-		//join request
-		//TODO: move to security util
-		tjoin_request_read_method = (tjoin_request_read)DetourFunc((BYTE*)this->GetBase() + 0x1F0CFC, (BYTE*)joinRequestRead, 7);
-		VirtualProtect(tjoin_request_read_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 	
 		//boot method
 		calls_session_boot_method = (calls_session_boot)DetourClassFunc((BYTE*)this->GetBase() + 0x1CCE9B, (BYTE*)calls_session_boot_sub_1cce9b, 8);
@@ -1723,6 +1731,9 @@ void H2MOD::ApplyHooks()
 		//0x1C7FE0
 		send_text_chat_method = (send_text_chat)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x1C7FE0, (BYTE*)sendTextChat, 11);
 		VirtualProtect(send_text_chat_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+		is_debugger_present_method = (is_debugger_present)DetourFunc((BYTE*)h2mod->GetBase() + 0x39B394, (BYTE*)isDebuggerPresent, 5);
+		VirtualProtect(is_debugger_present_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		/* experimental live flags
 		DWORD* isLive = (DWORD*)(h2mod->GetBase() + 0x422450);
