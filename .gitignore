@@ -33,3 +33,5 @@ xliveless.aps
 /Debug
 *.dll
 xliveless.vcxproj.user
+.vs/xliveless/v14/.suo
+*.db
