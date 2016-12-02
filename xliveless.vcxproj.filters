@@ -90,9 +90,6 @@
     <ClCompile Include="TSUsers.cpp">
       <Filter>Source Files\Team Speak</Filter>
     </ClCompile>
-    <ClCompile Include="H2Ban.cpp">
-      <Filter>Source Files\H2MOD\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="H2ChatBoxCommands.cpp">
       <Filter>Source Files\H2MOD\Source Files</Filter>
     </ClCompile>
@@ -121,6 +118,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="H2MOD_Hitfix.cpp">
+      <Filter>Source Files\H2MOD\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="H2Ban.cpp">
       <Filter>Source Files\H2MOD\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -173,9 +173,6 @@
     <ClInclude Include="TSUsers.h">
       <Filter>Source Files\Team Speak</Filter>
     </ClInclude>
-    <ClInclude Include="H2Ban.h">
-      <Filter>Source Files\H2MOD\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="H2ChatBoxCommands.h">
       <Filter>Source Files\H2MOD\Header Files</Filter>
     </ClInclude>
@@ -207,7 +204,12 @@
       <Filter>Source Files\H2MOD\Source Files</Filter>
     </ClInclude>
     <ClInclude Include="H2MOD_MapManager.h">
+      <Filter>Source Files\H2MOD\Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="H2MOD_Hitfix.h">
+      <Filter>Source Files\H2MOD\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="H2Ban.h">
       <Filter>Source Files\H2MOD\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

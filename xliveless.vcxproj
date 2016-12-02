@@ -166,6 +166,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="D3D.cpp" />
+    <ClInclude Include="H2MOD_Hitfix.h">
     <ClCompile Include="H2Ban.cpp" />
     <ClCompile Include="H2ChatBoxCommands.cpp" />
     <ClCompile Include="H2MOD.cpp" />
