@@ -7,8 +7,11 @@
 #include <stdlib.h>
 #include <string>
 #include <algorithm>
+#include "xlive_network.h"
 #include "CUser.h"
 #include "Globals.h"
+#include <h2mod.pb.h>
+#include "H2MOD_ServerList.h"
 
 using namespace std;
 
@@ -25,6 +28,7 @@ HANDLE g_dwFakeContent = (HANDLE) -2;
 HANDLE g_dwFakeAchievementContent = (HANDLE) -2;
 HANDLE g_dwMarketplaceContent = (HANDLE) -2;
 
+bool ServerEnumRan = false;
 
 INT num_players;
 XSESSION_LOCAL_DETAILS sessionDetails;
@@ -53,9 +57,12 @@ extern UINT g_signin[4];
 extern XUID xFakeXuid[4];
 extern CHAR g_szUserName[4][16+1];
 extern UINT g_online;
+extern UINT g_port;
 extern UINT g_debug;
+extern UINT x_delay;
 extern CHAR g_profileDirectory[];
 extern UINT voice_chat;
+extern CHAR customMapDownloadLink[128];
 extern BOOL isHost;
 
 extern void InitInstance();
@@ -817,12 +824,6 @@ int WINAPI XNetStartup (void *a1)
     return 0;
 }
 
-// #52: XNetCleanup
-INT WINAPI XNetCleanup ()
-{
-    TRACE("XNetCleanup");
-    return 0;
-}
 
 
 
@@ -924,7 +925,7 @@ DWORD WINAPI XNetQosListen( XNKID *pxnkid, PBYTE pb, UINT cb, DWORD dwBitsPerSec
 			pxnkid, pb, cb, dwBitsPerSec, dwFlags );
 
 	
-    return -1;
+    return ERROR_SUCCESS;
 }
 
 // #70: XNetQosLookup
@@ -1660,8 +1661,7 @@ BOOL WINAPI XNotifyGetNext(HANDLE hNotification, DWORD dwMsgFilter, PDWORD pdwId
 		}
 		break;
 
-
-	default:
+		default:
 		break;
 	} // switch
 
@@ -2149,6 +2149,7 @@ int WINAPI XCancelOverlapped (DWORD a1)
 }
 
 
+HANDLE ServerEnum = NULL;
 // #5256: XEnumerate
 int WINAPI XEnumerate(HANDLE hEnum, CHAR *pvBuffer, DWORD cbBuffer, PDWORD pcItemsReturned, PXOVERLAPPED pOverlapped)
 {
@@ -2352,6 +2353,272 @@ int WINAPI XEnumerate(HANDLE hEnum, CHAR *pvBuffer, DWORD cbBuffer, PDWORD pcIte
 		marketplaceEnumerate += marketplaceCount;
 	}
 
+	if (hEnum == ServerEnum && ServerEnumRan == false)
+	{
+		GetServerList();
+		PXLOCATOR_SEARCHRESULT nResult = new _XLOCATOR_SEARCHRESULT;
+		memset(nResult, 0x00, sizeof(_XLOCATOR_SEARCHRESULT));
+	
+		nResult->dwMaxPublicSlots = 16;
+		nResult->dwFilledPublicSlots = 0;
+		nResult->dwMaxPrivateSlots = 0;
+		nResult->dwFilledPrivateSlots = 0;
+		nResult->dwServerType = XLOCATOR_SERVERTYPE_PUBLIC;
+		nResult->serverAddress.ina.s_addr = inet_addr("0.50.50.0");
+		nResult->serverAddress.inaOnline.s_addr = inet_addr("0.60.60.0");
+		nResult->serverAddress.wPortOnline = 0x0000;
+		memset(nResult->serverAddress.abEnet, 0xAB, 6);
+		memset(nResult->serverAddress.abOnline, 0xED, 20);
+	
+		nResult->serverID = xFakeXuid[0];
+		
+		memset(&nResult->xnkid, 0xAB, sizeof(XNKID));
+		memset(&nResult->xnkey, 0xAA, sizeof(XNKEY));
+		nResult->xnkid.ab[0] &= ~XNET_XNKID_MASK;
+		nResult->xnkid.ab[0] |= XNET_XNKID_ONLINE_PEER;
+
+		nResult->cProperties = 23;
+		nResult->pProperties = new XUSER_PROPERTY[23];
+		
+		nResult->pProperties[0].dwPropertyId = XUSER_PROPERTY_UNKNOWN_INT64;
+		nResult->pProperties[0].value.type = XUSER_DATA_TYPE_INT64;
+		nResult->pProperties[0].value.i64Data = 0;
+
+		nResult->pProperties[1].dwPropertyId = XUSER_PROPERTY_SERVER_DESC;
+		nResult->pProperties[1].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[1].value.string.pwszData = new wchar_t[44];
+		nResult->pProperties[1].value.string.cbData = 44;
+		memset(nResult->pProperties[1].value.string.pwszData, 0x00, 44);
+		wcscpy(nResult->pProperties[1].value.string.pwszData, L"Live menus work!");
+
+		nResult->pProperties[2].dwPropertyId = XUSER_PROPERTY_MAP_ID;
+		nResult->pProperties[2].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[2].value.nData = 40;
+
+		nResult->pProperties[3].dwPropertyId = XUSER_PROPERTY_MAP_NAME;
+		nResult->pProperties[3].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[3].value.string.cbData = 2;
+		nResult->pProperties[3].value.string.pwszData = new wchar_t[2];
+		memset(nResult->pProperties[3].value.string.pwszData, 0x00, 2);
+
+		//40008227 unk related to custom maps, if it's not a custom map fill with AAAA
+		//Appears to be non-unicode string packed in unicode buffer.
+		nResult->pProperties[4].dwPropertyId = XUSER_PROPERTY_MAP_HASH_1;
+		nResult->pProperties[4].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[4].value.string.cbData = 94;
+		nResult->pProperties[4].value.string.pwszData = new wchar_t[94];
+		memset(nResult->pProperties[4].value.string.pwszData, 0x00, 94);
+		memset(nResult->pProperties[4].value.string.pwszData, 0x41, 42);
+		nResult->pProperties[4].value.string.pwszData[43] = 0x3D;
+		//nResult->pProperties[4].value.string.pwszData[44] = 0x0D;
+		//nResult->pProperties[4].value.string.pwszData[45] - 0x0A;
+
+		nResult->pProperties[5].dwPropertyId = XUSER_PROPERTY_GAMETYPE_NAME;
+		nResult->pProperties[5].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[5].value.string.cbData = 34;
+		nResult->pProperties[5].value.string.pwszData = new wchar_t[34];
+		memset(nResult->pProperties[5].value.string.pwszData, 0x00, 34);
+		wcscpy(nResult->pProperties[5].value.string.pwszData, L"Live!");
+
+	
+		nResult->pProperties[6].dwPropertyId = XUSER_PROPERTY_UNKNOWN_INT32_1;
+		nResult->pProperties[6].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[6].value.nData = 1; // Unknown - Default 1 Doesn't update or break anything at 2
+	
+
+		nResult->pProperties[7].dwPropertyId = XUSER_PROPERTY_GAMETYPE_ID;
+		nResult->pProperties[7].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[7].value.nData = 1;
+
+		nResult->pProperties[8].dwPropertyId = XUSER_PROPERTY_MAP_ID_2;
+		nResult->pProperties[8].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[8].value.nData = 40;
+
+		nResult->pProperties[9].dwPropertyId = XUSER_PROPERTY_MAP_NAME_2;
+		nResult->pProperties[9].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[9].value.string.cbData = 2;
+		nResult->pProperties[9].value.string.pwszData = new wchar_t[2];
+		memset(nResult->pProperties[9].value.string.pwszData, 0x00, 2);
+
+		//Another unknown hash thing that has to do with custom maps.
+		nResult->pProperties[10].dwPropertyId = XUSER_PROPERTY_MAP_HASH_2;
+		nResult->pProperties[10].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[10].value.string.cbData = 44;
+		nResult->pProperties[10].value.string.pwszData = new wchar_t[94];
+		memset(nResult->pProperties[10].value.string.pwszData, 0x00, 94);
+		memset(nResult->pProperties[10].value.string.pwszData, 0x41, 42);
+		nResult->pProperties[10].value.string.pwszData[43] = 0x3D;
+		//nResult->pProperties[10].value.string.pwszData[44] = 0x0D;
+		//nResult->pProperties[10].value.string.pwszData[45] - 0x0A;
+
+
+		nResult->pProperties[11].dwPropertyId = XUSER_PROPERTY_GAMETYPE_NAME_2;
+		nResult->pProperties[11].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[11].value.string.cbData = 34;
+		nResult->pProperties[11].value.string.pwszData = new wchar_t[34];
+		memset(nResult->pProperties[11].value.string.pwszData, 0x00, 34);
+		wcscpy(nResult->pProperties[11].value.string.pwszData, L"Live2!");
+
+
+		nResult->pProperties[12].dwPropertyId = XUSER_PROPERTY_UNKNOWN_INT32_2;
+		nResult->pProperties[12].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[12].value.nData = 2; // Uknown - Default 1 - doesn't break or change anything at 2
+
+		nResult->pProperties[13].dwPropertyId = XUSER_PROPERTY_UNKNOWN_INT32_3;
+		nResult->pProperties[13].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[13].value.nData = 1; // Uknown - Default 1 - doesn't break or change anything at 2
+
+		nResult->pProperties[14].dwPropertyId = XUSER_PROPERTY_UNKNOWN_INT32_4;
+		nResult->pProperties[14].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[14].value.nData = 4; // Uknown - Default 4
+
+		nResult->pProperties[15].dwPropertyId = XUSER_PROPERTY_VERSION_1;
+		nResult->pProperties[15].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[15].value.nData = 11122; // Version Number
+
+		nResult->pProperties[16].dwPropertyId = XUSER_PROPERTY_VERSION_2;
+		nResult->pProperties[16].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[16].value.nData = 11122; // Version number
+
+		nResult->pProperties[17].dwPropertyId = XUSER_PROPERTY_PARTY_PRIVACY;
+		nResult->pProperties[17].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[17].value.nData = 2;
+
+		nResult->pProperties[18].dwPropertyId = XUSER_PROPERTY_GAME_STATUS; // In-Game, Starting Game Etc.
+		nResult->pProperties[18].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[18].value.nData = 1; 
+
+		nResult->pProperties[19].dwPropertyId = XUSER_PROPERTY_UNKNOWN_INT32_6;
+		nResult->pProperties[19].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[19].value.nData = 0; // Uknown - Default 0
+
+		nResult->pProperties[20].dwPropertyId = XUSER_PROPERTY_UNKNOWN_INT32_7;
+		nResult->pProperties[20].value.type = XUSER_DATA_TYPE_INT32;
+		nResult->pProperties[20].value.nData = 31; // Uknown - Default 31
+
+		nResult->pProperties[21].dwPropertyId = XUSER_PROPERTY_UNKNOWN_UNICODE_1;
+		nResult->pProperties[21].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[21].value.string.cbData = 2;
+		nResult->pProperties[21].value.string.pwszData = new wchar_t[2];
+		memset(nResult->pProperties[21].value.string.pwszData,0x00, 2);
+
+		nResult->pProperties[22].dwPropertyId = XUSER_PROPERTY_SERVER_NAME;
+		nResult->pProperties[22].value.type = XUSER_DATA_TYPE_UNICODE;
+		nResult->pProperties[22].value.string.cbData = 34;
+		nResult->pProperties[22].value.string.pwszData = new wchar_t[34];
+		wcscpy(nResult->pProperties[22].value.string.pwszData, L"ServerTest");
+
+		memcpy(pvBuffer, nResult, sizeof(_XLOCATOR_SEARCHRESULT));
+
+			if (async == false)
+				*pcItemsReturned = 1;
+			else
+				pOverlapped->InternalHigh = 1;
+			
+			ServerEnumRan = true;
+
+
+		/**
+		TRACE("Returning server enum");
+			PXLOCATOR_SEARCHRESULT nResult = new _XLOCATOR_SEARCHRESULT;
+			memset(nResult, 0x00, sizeof(_XLOCATOR_SEARCHRESULT));
+
+			nResult->dwMaxPublicSlots = 10;
+			nResult->dwFilledPublicSlots = 0;
+			nResult->dwServerType = XLOCATOR_SERVERTYPE_PEER_HOSTED;
+			nResult->serverID = 1000;
+			
+			CUserManagement user;
+			user.GetLocalXNAddr(&nResult->serverAddress);
+
+			//	nResult->serverAddress.ina.s_addr = inet_addr("0.15.15.0");
+			memset(&nResult->xnkid, 0xAB, sizeof(XNKID));
+			memset(&nResult->xnkey, 0XAA, sizeof(XNKEY));
+			
+			nResult->cProperties = 5;
+			
+			char* XUSER_PROPERTIES = new char[sizeof(XUSER_PROPERTY) * 5];
+			memset(XUSER_PROPERTIES, 0x00, (sizeof(XUSER_PROPERTY) * 5));
+
+			TRACE("XUSER_PROPERTIES: %08X", XUSER_PROPERTIES);
+		
+			PXUSER_PROPERTY GameType = new XUSER_PROPERTY;
+			memset(GameType, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&GameType->value, 0x00, sizeof(XUSER_DATA));
+
+			GameType->dwPropertyId = 0x40008228u;
+			GameType->value.type = XUSER_DATA_TYPE_UNICODE;
+			GameType->value.binary.cbData = 0x20;
+			wchar_t* GameType_Str = new wchar_t[0x20];
+			memset(GameType_Str, 0x00, 0x20);
+			wcscpy(GameType_Str, L"GameType");
+			GameType->value.binary.pbData = (LPBYTE)GameType_Str;
+
+			memcpy(XUSER_PROPERTIES, GameType, sizeof(XUSER_PROPERTY));
+			
+			PXUSER_PROPERTY ServerName =  new XUSER_PROPERTY;
+			memset(ServerName, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&ServerName->value, 0x00, sizeof(XUSER_DATA));
+			ServerName->dwPropertyId = 0x40008230u;
+			ServerName->value.type = XUSER_DATA_TYPE_UNICODE;
+			ServerName->value.binary.cbData = 0x20;
+			
+			wchar_t* ServerName_Str = new wchar_t[0x20];
+			memset(ServerName_Str, 0x00, 0x20);
+			wcscpy(ServerName_Str, L"ServerName");
+			ServerName->value.binary.pbData = (LPBYTE)ServerName_Str;
+			
+			memcpy(XUSER_PROPERTIES+sizeof(XUSER_PROPERTY), &ServerName, sizeof(XUSER_PROPERTY));
+
+			PXUSER_PROPERTY MapID = new XUSER_PROPERTY;
+			memset(MapID, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&MapID->value, 0x00, sizeof(XUSER_DATA));
+
+			MapID->dwPropertyId = 0x10008207u;
+			MapID->value.type = XUSER_DATA_TYPE_INT32;
+			MapID->value.nData = 1302;
+
+			memcpy(XUSER_PROPERTIES+(sizeof(XUSER_PROPERTY) * 2), &MapID, sizeof(XUSER_PROPERTY));
+
+			PXUSER_PROPERTY GameType_ID = new XUSER_PROPERTY;
+			memset(GameType_ID, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&GameType_ID->value, 0x00, sizeof(XUSER_DATA));
+
+			GameType_ID->dwPropertyId = 0x10008209u;
+			GameType_ID->value.type = XUSER_DATA_TYPE_INT32;
+			GameType_ID->value.nData = 9;
+
+			memcpy(XUSER_PROPERTIES+(sizeof(XUSER_PROPERTY) * 3), &GameType_ID, sizeof(XUSER_PROPERTY));
+
+			PXUSER_PROPERTY Status = new XUSER_PROPERTY;
+			memset(Status, 0x00, sizeof(XUSER_PROPERTY));
+			memset(&Status->value, 0x00, sizeof(XUSER_DATA));
+
+			Status->dwPropertyId = 0x10008211u;
+			Status->value.type = XUSER_DATA_TYPE_INT32;
+			Status->value.nData = 3;
+			
+			memcpy(XUSER_PROPERTIES + (sizeof(XUSER_PROPERTY) * 4), &Status, sizeof(XUSER_PROPERTY));
+
+			nResult->pProperties = (PXUSER_PROPERTY)XUSER_PROPERTIES;
+
+			/*
+			// 0x40008228u GameType Name/Variant Name specifier/type.
+// 0x40008230u Servername
+// 0x10008207u MapID
+// 0x10008209u GameType
+// 0x10008211u Status
+*/
+/*			memcpy(pvBuffer, nResult, sizeof(_XLOCATOR_SEARCHRESULT));
+
+			if (async == false)
+				*pcItemsReturned = 1;
+			else
+				pOverlapped->InternalHigh = 1;
+			
+			ServerEnumRan = true;
+			**/
+	}
 
 
 	if( async == FALSE )
@@ -3020,6 +3287,12 @@ int WINAPI XLiveInitializeEx (void * pXii, DWORD dwVersion)
   return 0;
 }
 
+static wchar_t* charToWChar(const char* text) {
+	size_t size = strlen(text) + 1;
+	wchar_t* wa = new wchar_t[size];
+	mbstowcs(wa, text, size);
+	return wa;
+}
 
 // #5300: XSessionCreate
 LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicSlots, DWORD dwMaxPrivateSlots, ULONGLONG *pqwSessionNonce, PXSESSION_INFO pSessionInfo, PXOVERLAPPED pOverlapped, HANDLE *phEnum )
@@ -3033,6 +3306,7 @@ LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicS
 	if ((dwFlags & XSESSION_CREATE_HOST) > 0)
 	{
 		TRACE("XSessionCreate - XSESSION_CREATE_HOST");
+
 		if (!h2mod->Server) {
 			//when joining a dedicated server, the flags are wrong, so we only set this when its peer hosted games
 			isHost = true;
@@ -3093,36 +3367,39 @@ LONG WINAPI XSessionCreate( DWORD dwFlags, DWORD dwUserIndex, DWORD dwMaxPublicS
 	pOverlapped->InternalLow = ERROR_SUCCESS;
 	pOverlapped->dwExtendedError = ERROR_SUCCESS;
 
+
 	Check_Overlapped( pOverlapped );
 
-  if (voice_chat) {
-    //can be true if XNetCreateKey sets the extern bool server to true, this is always called before session create
-    //TODo: xnetcreatekey is not called on reconnect
-    if (isServer) {
-      TRACE("You are hosting a game");
-      isHost = true;
-      startServer();
-    } else {
-      TRACE("You are joining a game");
-      startClient(true);
-    }
-  }
+	//setup teamspeak client or server or both
+	if (voice_chat) {
+		//can be true if XNetCreateKey sets the extern bool server to true, this is always called before session create
+		//TODO: xnetcreatekey is not called on reconnect
+		if (isServer) {
+			TRACE("You are hosting a game");
+			isHost = true;
+			startServer();
+		} else {
+			TRACE("You are joining a game");
+			startClient(true);
+		}
+	}
 
+	if (isServer) {
+		wchar_t* pp = charToWChar(g_szUserName[0]);
+		//hack for peer hosted games
+		players->initPeerHostData(pp, xFakeXuid[0]);
+	}
 	return ERROR_IO_PENDING;
 }
 
-CHAR conversionFunc(WCHAR wchar) {
-	// simple typecast
-	// works because UNICODE incorporates ASCII into itself
-	return CHAR(wchar);
-
-}
 void startClient(bool startThread) {
 	//basically regardless if you are the host or not, you are always create a client to connect to "some" server
 	if (!client) {
 		client = new TSClient(g_debug);
 	}
+
 	IN_ADDR serverAddr;
+	int port;
 	if (isServer) {
 		serverAddr = clientMachineAddress;
 		//TODO: if we cannot get the current client machine address via GetLocalXNAddr which populates client Machine address
@@ -3133,21 +3410,22 @@ void startClient(bool startThread) {
 		xlive.dll+5A4434
 		xlive.dll+5A4434
 		*/
+		port = g_port + 8;
 		TRACE_GAME_N("Client is server and is trying to connect to address %s", inet_ntoa(serverAddr));
 	}	else {
 		serverAddr = h2mod->get_server_address();
+		port = ntohs(join_game_xn.wPortOnline) + 8;
 		TRACE_GAME_N("Client is NOT server and is trying to connect to address %s", inet_ntoa(serverAddr));
 	}
 	client->setServerAddress(serverAddr);
-	client->setServerPort(1007);
+	client->setServerPort(port);
 
-	//TODO: cleanup
-	WCHAR* strw2 = new WCHAR[128];
-	char* strw3 = new char[64];
-	//wsprintf(strw2, L"%llx", xFakeXuid[0]);
-	//wcstombs(strw3, strw2, 64);
+	WCHAR strw[8192];
+	//cleaned up when client is closed
+	char* strw3 = new char[4096];
+	wsprintf(strw, L"%I64x", xFakeXuid[0]);
+	wcstombs(strw3, strw, 8192);
 
-	_i64toa(xFakeXuid[0], strw3, 10);
 	client->setNickname(strw3);
 	if (startThread) {
 		client->startChatting();
@@ -3160,7 +3438,7 @@ void startServer() {
 		server = new TSServer(g_debug);
 		TRACE_GAME_N("TSServer wasn't created for some reason, so we rebuilt it");
 	}
-	server->setPort(1007);
+	server->setPort(g_port + 8);
 	server->startListening();
 }
 
@@ -3413,15 +3691,10 @@ XONLINE_NAT_TYPE WINAPI XOnlineGetNatType ()
 
 
 // #5325: XSessionLeaveLocal
-DWORD WINAPI XSessionLeaveLocal(DWORD, DWORD, DWORD, DWORD)
+DWORD WINAPI XSessionLeaveLocal (DWORD, DWORD, DWORD, DWORD)
 {
-	TRACE("XSessionLeaveLocal");
-	return 0;
-}
-
-DWORD WINAPI XSessionLeaveRemote (HANDLE hSession, DWORD dxXuidCount, const XUID *pXuids, PXOVERLAPPED pXOverlapped) {
-	TRACE("XSessionLeaveRemote");
-  return ERROR_SUCCESS;
+    TRACE("XSessionLeaveLocal");
+    return 0;
 }
 
 
@@ -3542,7 +3815,7 @@ int WINAPI XSessionFlushStats (DWORD, DWORD)
 DWORD WINAPI XSessionDelete (DWORD, DWORD)
 {
     TRACE("XSessionDelete");
-    cleanupClientAndServer();
+		cleanupClientAndServer();
     return 0;
 }
 
@@ -3785,30 +4058,34 @@ DWORD WINAPI XUserReadProfileSettings (DWORD dwTitleId, DWORD dwUserIndex, DWORD
 	return ERROR_SUCCESS;
 }
 
-
-// #5332: XSessionEnd
-int WINAPI XSessionEnd (DWORD, DWORD)
-{
-    TRACE("XSessionEnd");
-    cleanupClientAndServer();
-    return 0;
-}
-
 //called by xsessionend, when you leave a session you are no longer a client or a server
 //so we reset these states
 //TODO: separate into cleanupclient and cleanupserver
 void cleanupClientAndServer() {
 	TRACE_GAME_N("Cleanup called");
-	//TODO: techinically these bools aren't thread safe (but locking starts to slow it down)
-	//the bools will eventually be set even in race condition scenarios
-	stopClient = true;
-	stopServer = true;
+	if (client != NULL) {
+		client->disconnect();
+	}
+
+	if (server != NULL) {
+		server->destroyVirtualServer();
+	}
+
 	//the user may not host a game again, so we unset this
 	isServer = false;
 
 	//remove any cached team speak users
 	tsUsers->empty();
+
+	//empty player cache
+	players->clear();
+
+	//leaving game, so don't keep existing download url
+	mapManager->resetMapDownloadUrl();
+
+	overrideUnicodeMessage = false;
 }
+
 
 // #5333: XSessionArbitrationRegister
 DWORD WINAPI XSessionArbitrationRegister (DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD)
@@ -3825,6 +4102,14 @@ DWORD WINAPI XTitleServerCreateEnumerator (LPCSTR pszServerInfo, DWORD cItem, DW
     if(phEnum) 
 		*phEnum = 0;
     return 1;
+}
+
+
+// #5336: XSessionLeaveRemote
+DWORD WINAPI XSessionLeaveRemote (DWORD, DWORD, DWORD, DWORD)
+{
+    TRACE("XSessionLeaveRemote");
+    return 0;
 }
 
 
@@ -5106,13 +5391,197 @@ DWORD WINAPI XLiveSecureLoadLibraryW( LPCWSTR libFileName, DWORD a2, DWORD dwFla
 	return 0x80070032;
 }
 
-
 // 5230: ??
-DWORD WINAPI XLocatorServerAdvertise( DWORD a1, DWORD a2, DWORD a3, DWORD a4, DWORD a5, DWORD a6, DWORD a7, DWORD a8, DWORD a9, DWORD a10, DWORD a11, DWORD a12, DWORD a13, DWORD a14, DWORD a15 )
+DWORD WINAPI XLocatorServerAdvertise( DWORD dwUserIndex, DWORD dwServerType, XNKID xnkid, XNKEY xnkey, DWORD dwMaxPublicSlots, DWORD dwMaxPrivateSlots, DWORD dwFilledPublicSlots, DWORD dwFilledPrivateSlots, DWORD cProperties, PXUSER_PROPERTY pProperties, DWORD a11)
 {
   TRACE("XLocatorServerAdvertise  (*** checkme ***)");
+  
+ 
+  
+
+  TRACE("dwUserIndex: %08X", dwUserIndex);
+  TRACE("dwServerType: %08X", dwServerType);
+
+  switch (dwServerType)
+  {
+		case XLOCATOR_SERVERTYPE_PUBLIC:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_PUBLIC");
+		break;
+
+		case XLOCATOR_SERVERTYPE_GOLD_ONLY:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_GOLD_ONLY");
+		break;
+
+		case XLOCATOR_SERVERTYPE_PEER_HOSTED:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_PEER_HOSTED");
+		break;
+
+		case XLOCATOR_SERVERTYPE_PEER_HOSTED_GOLD_ONLY:
+			TRACE("dwServerType == XLOCATOR_SERVERTYPE_PEER_HOSTED_GOLD_ONLY");
+		break;
+
+  }
 
 
+  TRACE("XNKID: %08X", xnkid);
+  TRACE("XNKEY: %08X", xnkey);
+  TRACE("dwMaxPublicSlots: %i", dwMaxPublicSlots);
+  TRACE("dwMaxPrivateSlots: %i", dwMaxPrivateSlots);
+  TRACE("dwFilledPublicSlots: %i", dwFilledPublicSlots);
+  TRACE("dwFilledPrivateSlots: %i", dwFilledPrivateSlots);
+  TRACE("cProperties: %i", cProperties);
+
+  for (unsigned int i = 0; i != cProperties; i++)
+  {
+	  bool is_uknown = false;
+
+	  switch (pProperties->dwPropertyId)
+	  {
+			case XUSER_PROPERTY_GAMETYPE_NAME:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAMETYPE_NAME: %ws",pProperties->value.string.pwszData);
+			break;
+			
+			case XUSER_PROPERTY_GAMETYPE_NAME_2:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAMETYPE_NAME_2: %ws",pProperties->value.string.pwszData);
+			break;
+			
+			case XUSER_PROPERTY_SERVER_NAME:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_SERVER_NAME: %ws",pProperties->value.string.pwszData);
+			break;
+
+			case XUSER_PROPERTY_MAP_ID:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_MAP_ID: %i",pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_MAP_ID_2:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_MAP_ID_2: %i",pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_GAMETYPE_ID:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAMETYPE_ID: %i",pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_GAME_STATUS:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_GAME_STATUS: %i",pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_SERVER_DESC:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_SERVER_DESC: %ws",pProperties->value.string.pwszData);
+			break;
+
+			case XUSER_PROPERTY_VERSION_1:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_VERSION_1: %i",pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_VERSION_2:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_VERSION_2: %i",pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_MAP_NAME:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_MAP_NAME: %ws",pProperties->value.string.pwszData);
+			break;
+
+			case XUSER_PROPERTY_MAP_HASH_1:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_MAP_HASH_1: %ws",pProperties->value.string.pwszData);
+			break;
+
+			case XUSER_PROPERTY_MAP_HASH_2:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_MAP_HASH_2: %ws",pProperties->value.string.pwszData);
+			break;
+
+			case XUSER_PROPERTY_PARTY_PRIVACY:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_PARTY_PRIVACY: %i", pProperties->value.nData);
+			break;
+
+
+			case XUSER_PROPERTY_UNKNOWN_INT64:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UNKNOWN_INT64: %I64u", pProperties->value.i64Data);
+			break;
+			
+			case XUSER_PROPERTY_UNKNOWN_INT32_1:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UNKNOWN_INT32_1 (Default 1): %i", pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_UNKNOWN_INT32_2:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UNKNOWN_INT32_2 (Default 1): %i", pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_UNKNOWN_INT32_3:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UNKNOWN_INT32_3 (Default 1): %i", pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_UNKNOWN_INT32_4:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UNKNOWN_INT32_4 (Default 4): %i ", pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_UNKNOWN_INT32_6:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UNKNOWN_INT32_6 (Default: 0): %i", pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_UNKNOWN_INT32_7:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UKNOWN_INT32_7 (Default: 32): %i", pProperties->value.nData);
+			break;
+
+			case XUSER_PROPERTY_UNKNOWN_UNICODE_1:
+				TRACE("pProperties->dwPropertyId == XUSER_PROPERTY_UNKNOWN_UNICODE_1: %ws", pProperties->value.string.pwszData);
+			break;
+
+			default:
+				TRACE("pProperties->dwPropertyId == %08X", pProperties->dwPropertyId);
+				is_uknown = true;
+			break;
+
+	  }
+
+		  if (is_uknown)
+		  {
+			  switch (pProperties->value.type)
+			  {
+				  case XUSER_DATA_TYPE_BINARY:
+					  TRACE("pProperties->value.type == XUSER_DATA_TYPE_BINARY");
+					  TRACE("pProperties->value.binary: %08X", pProperties->value.binary);
+				  break;
+
+				  case XUSER_DATA_TYPE_CONTEXT:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_CONTEXT");
+					  TRACE("pProperties.value.context?");
+				  break;
+
+				  case XUSER_DATA_TYPE_DATETIME:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_DATETIME");
+				  break;
+
+				  case XUSER_DATA_TYPE_DOUBLE:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_DOUBLE");
+				  break;
+
+				  case XUSER_DATA_TYPE_FLOAT:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_FLOAT");
+				  break;
+
+				  case XUSER_DATA_TYPE_INT32:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_INT32");
+					  TRACE("pProperties.value.nData: %i", pProperties->value.nData);
+				  break;
+
+				  case XUSER_DATA_TYPE_INT64:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_INT64");
+					  TRACE("pProperties.value.i64Data: %I64u", pProperties->value.i64Data);
+				  break;
+
+				  case XUSER_DATA_TYPE_NULL:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_NULL");
+				  break;
+
+				  case XUSER_DATA_TYPE_UNICODE:
+					  TRACE("pProperties.value.type == XUSER_DATA_TYPE_UNICODE");
+					  TRACE("pProperties.value.string.pwszData: %ws", pProperties->value.string.pwszData);
+					  TRACE("pProperties.value.string.cbData: %i", pProperties->value.string.cbData);
+				  break;
+			  }
+		  }
+	  pProperties++;
+  }
 	// not done - error now
 	return S_OK;
 }
@@ -5136,23 +5605,70 @@ DWORD WINAPI XLocatorGetServiceProperty( DWORD dwUserIndex, DWORD cNumProperties
 		dwUserIndex, cNumProperties, pProperties, pOverlapped);
 
 
-  pProperties[0].value.nData = 20;
-  pProperties[1].value.nData = 30;
-  pProperties[2].value.nData = 40;
-  pProperties[3].value.nData = 50;
+  pProperties[0].value.nData = 1;
+  pProperties[1].value.nData = 3;
+  pProperties[2].value.nData = 3;
+  pProperties[3].value.nData = 7;
 
 	return S_OK;
 }
 
 
 // 5234: ??
-DWORD WINAPI XLocatorCreateServerEnumerator( DWORD a1, DWORD a2, DWORD a3, DWORD a4, DWORD a5, DWORD a6, DWORD a7, DWORD a8, DWORD a9, DWORD a10 )
+typedef enum _XTS_FILTER_COMPARE_OPERATOR
 {
-  TRACE("XLocatorCreateServerEnumerator");
+	XTS_FILTER_COMPARE_OPERATOR_None = 0,               // this operator is reserved.
+	XTS_FILTER_COMPARE_OPERATOR_Equals = 1,             // property = value
+	XTS_FILTER_COMPARE_OPERATOR_NotEquals = 2,          // property <> value
+	XTS_FILTER_COMPARE_OPERATOR_GreaterThan = 4,        // property > value
+	XTS_FILTER_COMPARE_OPERATOR_GreaterEqualThan = 8,   // property >= value
+	XTS_FILTER_COMPARE_OPERATOR_LessThan = 16,          // property < value
+	XTS_FILTER_COMPARE_OPERATOR_LessEqualThan = 32,     // property <= value
+	XTS_FILTER_COMPARE_OPERATOR_Contains = 64,          // CONTAINS(property, value)
+}XTS_FILTER_COMPARE_OPERATOR;
 
+
+typedef struct _XLOCATOR_FILTER {
+	XUSER_PROPERTY userProperty;                        // The property ID and the value are combined with eComparator
+	XTS_FILTER_COMPARE_OPERATOR eComparator;
+} XLOCATOR_FILTER, *PXLOCATOR_FILTER;
+
+
+typedef struct _XLOCATOR_FILTER_GROUP {
+	UINT cFilterCount;                                  // Number of filters in this group
+	PXLOCATOR_FILTER pFilters;
+} XLOCATOR_FILTER_GROUP, *PXLOCATOR_FILTER_GROUP;
+
+
+#define XLOCATOR_SORT_ASCENDING     0       // sorted in ascending order, from lowest value to highest value
+#define XLOCATOR_SORT_DESCENDING    1       // sorted in descending order, from highest value to lowest value
+
+typedef struct _XLOCATOR_SORTER {
+	DWORD dwPropertyId;                     // id of the field to be sorted.
+	DWORD dwSortDirection;                  // should be XLOCATOR_SORT_ASCENDING or XLOCATOR_SORT_DESCENDING
+} XLOCATOR_SORTER, *PXLOCATOR_SORTER;
+
+
+
+DWORD WINAPI XLocatorCreateServerEnumerator(int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, DWORD* pcbBuffer, PHANDLE phEnum )
+{
+
+
+  TRACE("sizeof(XLOCATOR_SEARCHRESULT): %08X", sizeof(XLOCATOR_SEARCHRESULT));
+
+
+  *pcbBuffer = (DWORD)sizeof(XLOCATOR_SEARCHRESULT);
+
+  if (phEnum)
+  {
+	  *phEnum = CreateMutex(NULL, NULL, NULL);
+
+	  TRACE("- Handle = %X", *phEnum);
+	  ServerEnum = *phEnum;
+  }
 
 	// not done - error now
-	return 0x57;
+	return ERROR_SUCCESS;
 }
 
 
@@ -5173,7 +5689,7 @@ DWORD WINAPI XLocatorServiceInitialize( DWORD a1, DWORD a2 )
   TRACE("XLocatorServiceInitialize  (a1 = %X, a2 = %X)",
 		a1, a2 );
 
-
+  a2 = 0x0000000;
 	/*
 	Lost Planet, Gears of War
 	- LocatorV1.434307DE.RTP.
@@ -5202,12 +5718,20 @@ DWORD WINAPI XLocatorServiceUnInitialize( DWORD a1 )
 
 
 // 5238: ??
-DWORD WINAPI XLocatorCreateKey( DWORD a1, DWORD a2 )
+DWORD WINAPI XLocatorCreateKey(XNKID * pxnkid, XNKEY * pxnkey)
 {
-  TRACE("XLocatorCreateKey  (a1 = %X, a2 = %X)",
-		a1, a2 );
+  //TRACE("XLocatorCreateKey  (a1 = %X, a2 = %X)",
+//		a1, a2 );
 
+  if (pxnkid && pxnkey)
+  {
 
+	  memset(pxnkid, 0xAB, sizeof(XNKID));
+	  memset(pxnkey, 0XAA, sizeof(XNKEY));
+
+	  pxnkid->ab[0] &= ~XNET_XNKID_MASK;
+	  pxnkid->ab[0] |= XNET_XNKID_ONLINE_PEER;
+  }
 	// GFWL offline
 	return S_OK;
 }
@@ -5569,7 +6093,8 @@ HRESULT IXHV2ENGINE::Dummy7( VOID *pThis, int a1, int a2, int a3, int a4 )
 	TRACE( "IXHV2Engine::Dummy7  (a1 = %X, a2 = %X, a3 = %X, a4 = %X)",
 		a1, a2, a3, a4 );
 
-	//removes player from fake xlive session
+
+	//removes player from xlive session
 	return ERROR_SUCCESS;
 }
 
@@ -5582,7 +6107,6 @@ HRESULT IXHV2ENGINE::Dummy8( VOID *pThis, int a1 )
 
 	return ERROR_SUCCESS;
 }
-
 BOOL IXHV2ENGINE::IsHeadsetPresent(VOID *pThis, DWORD dwUserIndex) {
 	//TRACE("IXHV2Engine::IsHeadsetPresent");
 
@@ -5593,15 +6117,27 @@ BOOL IXHV2ENGINE::IsHeadsetPresent(VOID *pThis, DWORD dwUserIndex) {
 
 BOOL IXHV2ENGINE::isRemoteTalking(VOID *pThis, XUID xuid) {
 	//TRACE("IXHV2Engine::isRemoteTalking");
-	return tsUsers->isUserTalking(xuid);
+	//TODO: the xuid given here is the real xuid, the one we provide in xlive.ini is the hex of that the above value
+	//so we need to convert it...
+	WCHAR strw[8192];
+	char strw3[4096];
+	wsprintf(strw, L"%I64x", xuid);
+	wcstombs(strw3, strw, 8192);
+	XUID id = _atoi64(strw3);
+	return tsUsers->isUserTalking(id);
 }
 
 BOOL IXHV2ENGINE::IsLocalTalking(VOID *pThis, DWORD dwUserIndex) {
 	//TRACE("IXHV2Engine::isTalking(dwUserIndex = %d)", dwUserIndex);
 	//check the xuid map
-	XUID id = xFakeXuid[0];
+	WCHAR strw[8192];
+	char strw3[4096];
+	wsprintf(strw, L"%I64x", xFakeXuid[0]);
+	wcstombs(strw3, strw, 8192);
+	XUID id = _atoi64(strw3);
 	return microphoneEnabled ? tsUsers->isUserTalking(id) : false;
 }
+
 
 HRESULT IXHV2ENGINE::RegisterLocalTalker( VOID *pThis, DWORD dwUserIndex )
 {
@@ -5628,7 +6164,7 @@ HRESULT IXHV2ENGINE::UnregisterLocalTalker( VOID *pThis, DWORD dwUserIndex )
 
 HRESULT IXHV2ENGINE::Dummy11( VOID *pThis, XUID id, int a3, int a4, int a5 )
 {
-	TRACE("IXHV2Engine::Dummy11");
+	//TRACE( "IXHV2Engine::Dummy11  (a1 = %X, a2 = %X, a3 = %X, a4 = %X, a5 = %X)", a1, a2, a3, a4, a5 );
 
 
 	return ERROR_SUCCESS;
@@ -5641,7 +6177,8 @@ HRESULT IXHV2ENGINE::RegisterRemoteTalker(VOID *pThis, XUID a1, LPVOID v1, LPVOI
 	return S_OK;
 }
 
-HRESULT IXHV2ENGINE::UnregisterRemoteTalker( VOID *pThis, XUID id)
+
+HRESULT IXHV2ENGINE::UnregisterRemoteTalker( VOID *pThis, XUID  id )
 {
 	TRACE("IXHV2Engine::UnregisterRemoteTalker ");
 

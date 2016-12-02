@@ -33,7 +33,8 @@ TSServer::TSServer(bool log) {
 
 	if (log) {
 		logTypes = LogType_FILE | LogType_CONSOLE | LogType_USERLOGGING;
-	}	else {
+	}
+	else {
 		logTypes = LogType_NONE;
 	}
 	if ((error = ts3server_initServerLib(&funcs, logTypes, NULL)) != ERROR_ok) {
@@ -45,7 +46,7 @@ TSServer::TSServer(bool log) {
 	}
 
 	/* Query and print server lib version */
-	
+
 	if ((error = ts3server_getServerLibVersion(&version)) != ERROR_ok) {
 		TRACE_GAME_N("Error querying server lib version: %d", error);
 	}
@@ -112,14 +113,14 @@ void TSServer::createVirtualServer() {
 	//4 - opus voice
 	//5 - opus music
 	//TODO: make configurable
-	if ((error = ts3server_setChannelVariableAsInt(serverID, channelid, CHANNEL_CODEC, 0)) != ERROR_ok) {
+	if ((error = ts3server_setChannelVariableAsInt(serverID, channelid, CHANNEL_CODEC, 5)) != ERROR_ok) {
 		TRACE_GAME_N("Error setting codec: %d", error);
 	}
 
 	/* Lower codec quality */
 	//0-10 (default is 7) 10 is best quality
 	//TODO: make configurable
-	if ((error = ts3server_setChannelVariableAsInt(serverID, channelid, CHANNEL_CODEC_QUALITY, 0)) != ERROR_ok) {
+	if ((error = ts3server_setChannelVariableAsInt(serverID, channelid, CHANNEL_CODEC_QUALITY, 10)) != ERROR_ok) {
 		TRACE_GAME_N("Error changing codec quality: %d", error);
 	}
 
@@ -135,14 +136,15 @@ void TSServer::destroyVirtualServer() {
 	/* Stop virtual server */
 	if ((error = ts3server_stopVirtualServer(serverID)) != ERROR_ok) {
 		TRACE_GAME_N("Error stopping virtual server: %d", error);
-	}	else {
+	}
+	else {
 		TRACE_GAME_N("Destroyed virtual server");
 	}
 }
 
 /*
- * Will grab the keypair from the virtual server if this is the first time starting the server
- */
+* Will grab the keypair from the virtual server if this is the first time starting the server
+*/
 void TSServer::firstTimeValidateLicense(const char *keyPair) {
 	unsigned int error;
 	/* If we didn't load the keyPair before, query it from virtual server and save to file */
@@ -242,12 +244,12 @@ void TSServer::onClientConnected(uint64 serverID, anyID clientID, uint64 channel
 	//TODO: if the client has no business in this channel (for team chat), *removeClientError = ERROR_client_insufficient_permissions;
 	//this will make team only chat actually safe
 	/*if (chatMode == TEAM_ONLY) {
-		//TODO: get clients xuid from client id (somehow)
-		char* name;
-		if (ts3server_getClientVariableAsString(serverID, clientID, CLIENT_NICKNAME, &name) != ERROR_ok)
-			return;
+	//TODO: get clients xuid from client id (somehow)
+	char* name;
+	if (ts3server_getClientVariableAsString(serverID, clientID, CLIENT_NICKNAME, &name) != ERROR_ok)
+	return;
 
-		//TODO: ts server can move clients from channel to channel
+	//TODO: ts server can move clients from channel to channel
 	}*/
 	TRACE_GAME_N("Client %u joined channel %llu on virtual server %llu", clientID, (unsigned long long)channelID, (unsigned long long)serverID);
 }
@@ -261,34 +263,10 @@ void TSServer::setConnectClient(bool connectClient) {
 }
 
 void TSServer::startListening() {
-	std::thread* serverConnectionThread = new std::thread(&TSServer::listenForChat, this);
-}
-
-void TSServer::listenForChat() {
 	createVirtualServer();
 
 	if (this->connectClient) {
 		startClient(false);
 		client->connect();
 	}
-
-	//make sure this is false before we start
-	stopClient = false;
-
-	//make sure this is false before we start
-	stopServer = false;
-
-	while (!stopServer) {}
-
-	if (this->connectClient) {
-		client->disconnect();
-	}
-
-	//since this is now true, we reset it for future server runs
-	stopClient = false;
-
-	destroyVirtualServer();
-
-	//since this is now true, we reset it for future server runs
-	stopServer = false;
 }

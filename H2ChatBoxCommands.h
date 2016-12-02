@@ -5,19 +5,20 @@ class ChatBoxCommands {
 public:
 	ChatBoxCommands();
 
+	void reloadMap();
 	void printDistance(int player1, int player2);
 	void listPlayers();
 	void listBannedPlayers();
-	void mute(char*, bool);
-	void unmute(char*);
-	void ban(char*);
-	void kick(char*, bool);
-	void kick(int, bool);
+	void mute(const char*, bool);
+	void unmute(const char*);
+	void ban(const char*);
+	void kick(const char*);
+	void kick(int);
 	void setChatMode(CLIENT_CHAT_MODE);
 	void handle_command(std::string);
 	void setVoiceActivationLevel(float);
 private:
-	bool ChatBoxCommands::isNum(const char *s);
+	bool isNum(const char *s);
 
 	float MIN_VOICE_ACTIVATION_LEVEL = -50.0f;
 	float MAX_VOICE_ACTIVATION_LEVEL = 50.0f;

@@ -392,7 +392,7 @@ void Network::Initialize()
 
 	if (h2mod->Server)
 	{
-		Network::bitstreamptr::read_uint += h2mod->GetBase();
+		/*Network::bitstreamptr::read_uint += h2mod->GetBase();
 		Network::bitstreamptr::write_uint += h2mod->GetBase();
 		Network::bitstreamptr::read_block += h2mod->GetBase();
 	

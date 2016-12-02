@@ -1,25 +1,27 @@
 #include "Globals.h"
+#include <Shlwapi.h>
 
 ChatBoxCommands::ChatBoxCommands() {
 }
 
-void ChatBoxCommands::mute(char* name, bool ban) {
+void ChatBoxCommands::mute(const char* name, bool ban) {
 	//TODO: if server try to mute on the server (if we even can)
 	//if we can't we can just move them to another channel or kick them from the channel
 	//but kicking would require us to every minute or so check if we reconnect
-	if (!isServer) {
+	if (client != NULL) {
 		client->mute(name, ban);
 	}
 }
 
-
 void ChatBoxCommands::setVoiceActivationLevel(float activationLevel) {
-	if (!isServer) {
+	if (client != NULL) {
 		client->setVoiceActivationLevel(activationLevel);
 	}
-}void ChatBoxCommands::unmute(char* name) {
+}
+
+void ChatBoxCommands::unmute(const char* name) {
 	//TODO: unmute for server (if possible)
-	if (!isServer) {
+	if (client != NULL) {
 		client->unmute(name);
 		//TODO: remove ban if exists
 	}
@@ -29,20 +31,21 @@ void ChatBoxCommands::setChatMode(CLIENT_CHAT_MODE mode) {
 	clientChatMode = mode;
 }
 
-void ChatBoxCommands::kick(char* playerName, bool perm) {
-	int playerIndex = nameToPlayerIndexMap[playerName];
-	for (auto it = nameToPlayerIndexMap.begin(); it != nameToPlayerIndexMap.end(); ++it) {
-		char* name = it->first;
-		int index = it->second;
+void ChatBoxCommands::kick(const char* playerName) {
+	H2Player& player = players->getPlayer(playerName);
+	int peerIndex = player.peer;
 
-		TRACE_GAME_N("PlayerMap-PlayerName=%s, PlayerIndex=%d", name, index);
+	if (peerIndex == -1) {
+		h2mod->write_inner_chat_dynamic(L"Could not find peer index");
+		return;
 	}
-	this->kick(nameToPlayerIndexMap[playerName], perm);
+
+	TRACE_GAME_N("About to kick peer index %d for player name %s", peerIndex, playerName);
+	h2mod->kick_player(peerIndex);
 }
 
-void ChatBoxCommands::kick(int playerIndex, bool perm) {
+void ChatBoxCommands::kick(int playerIndex) {
 	h2mod->kick_player(playerIndex);
-	//TODO: write to file for permnanent bans
 }
 
 bool ChatBoxCommands::isNum(const char *s) {
@@ -57,68 +60,45 @@ bool ChatBoxCommands::isNum(const char *s) {
 	return true;
 }
 
-
-/*
-void ChatBoxCommands::listBannedXuids() {
-	//TODo: go to ban file
-}
-
-void ChatBoxCommands::listBannedIps() {
-	//TODo: go to ban file
-}
-*/
 void ChatBoxCommands::listBannedPlayers() {
-	//TODo: go to ban file
-}
+	std::vector<std::string> stringList;
 
+	BanUtility::getInstance().fillBannedPlayerDisplayStrList(stringList);
+
+	std::vector<std::string>::const_iterator iterator;
+	for (iterator = stringList.begin(); iterator != stringList.end(); ++iterator) {
+		std::string displayItem = *iterator;
+		std::wstring ws;
+		ws.assign(displayItem.begin(), displayItem.end());
+		h2mod->write_inner_chat_dynamic(ws.c_str());
+	}
+}
 
 void ChatBoxCommands::printDistance(int player1, int player2) {
 	float distance = h2mod->get_distance(player1, player2);
 	std::wstringstream oss;
 	oss << "Distance from player index " << player1 << " to player index " << player2 << " is " << distance << " units";
 	h2mod->write_inner_chat_dynamic(oss.str().c_str());
-}void ChatBoxCommands::listPlayers() {
-	//TODO: we have to iterate all 16 player spots, since when people leave a game, other people in game don't occupy their spot
-	for (int i = 0; i < 15; i++) {
-		char gamertag[32];
-		if (isLobby) {
-			h2mod->get_player_name2(i, gamertag, 32);
-		}
-		else {
-			h2mod->get_player_name(i, gamertag, 32);
-		}
-		if ((gamertag != NULL) && (gamertag[0] >= 0x20 && gamertag[0] <= 0x7E)) {
-			wchar_t* unicodeGamertag = new wchar_t[64];
-			mbstowcs(unicodeGamertag, gamertag, 64);
-
-			const char* hostnameOrIP = inet_ntoa(h2mod->get_player_ip(i));
-
-			bool resetDynamicBase = false;
-			if (i != nameToPlayerIndexMap[gamertag]) {
-				resetDynamicBase = true;
-			}
-			float xPos = h2mod->get_player_x(i, resetDynamicBase);
-			float yPos = h2mod->get_player_y(i, resetDynamicBase);
-			float zPos = h2mod->get_player_z(i, resetDynamicBase);
-
-			std::wstringstream oss;
-			oss << "Player " << i << ":" << unicodeGamertag << "/" << hostnameOrIP << "/x=" << xPos << ",y=" << yPos << ",z=" << zPos;
-			std::wstring playerLogLine = oss.str();
-			h2mod->write_inner_chat_dynamic(playerLogLine.c_str());
-		}
-	}
 }
 
-void ChatBoxCommands::ban(char* gamertag) {
-	//first kick the player from the game
-	kick(gamertag, true);
+void ChatBoxCommands::listPlayers() {
+	TRACE("Team play on: %d", h2mod->is_team_play());
+	players->print();
+}
 
-	int playerIndex = nameToPlayerIndexMap[gamertag];
+void ChatBoxCommands::ban(const char* gamertag) {
+	//first get all the unique properties about the player
+	H2Player& player = players->getPlayer(gamertag);
+	int playerIndex = player.index;
+	XUID playerXuid = player.index;
 	IN_ADDR playerIp = h2mod->get_player_ip(playerIndex);
-	XUID playerXuid = nameToXuidIndexMap[gamertag];
 
-	//then ban the player based on all the unique properties of the player
-	BanUtility::banPlayer(gamertag, playerIp, playerXuid);}
+	//second kick the player from the game
+	kick(gamertag);
+
+	//finally ban the player based on all the unique properties of the player
+	BanUtility::getInstance().banPlayer(gamertag, playerIp, playerXuid);
+}
 
 /*
 * Handles the given string command
@@ -131,87 +111,75 @@ void ChatBoxCommands::handle_command(std::string command) {
 		std::string firstCommand = splitCommands[0];
 		std::transform(firstCommand.begin(), firstCommand.end(), firstCommand.begin(), ::tolower);
 		if (firstCommand == "$kick") {
-			if (splitCommands.size() != 3) {
-				h2mod->write_inner_chat_dynamic(L"Invalid kick command, usage - $kick (GAMERTAG or PLAYER_INDEX) BAN_FLAG(true/false)");
+			if (splitCommands.size() != 2) {
+				h2mod->write_inner_chat_dynamic(L"Invalid kick command, usage - $kick (GAMERTAG or PLAYER_INDEX)");
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
-
-			std::string secondArg = splitCommands[2];
-			bool ban = secondArg == "true" ? true : false;
-
-			if (!isServer) {
-				h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
-				return;
+			try {
+				if (!isServer) {
+					//if clients use kick function, they will be kicked automatically by the game
+					h2mod->write_inner_chat_dynamic(L"Only the server can kick players");
+				}	else {
+					if (isNum(firstArg.c_str())) {
+						kick(atoi(firstArg.c_str()));
+					}	else {
+						kick(firstArg.c_str());
+					}
+				}
 			}
-
-			if (isLobby) {
-				//TODO: the nameToPlayerIndexMap is based on in game player indexes
-				//it is not used while in game, so the indexes aren't right
-				h2mod->write_inner_chat_dynamic(L"Kicking from lobby with player index or name won't work yet..");
-				return;
+			catch (...) {
+				TRACE("Error trying to kick");
 			}
-
-			if (isNum(cstr)) {
-				kick(atoi(cstr), ban);
-			}
-			else {
-				kick(cstr, ban);
-			}
-
-			delete[] cstr;
-		} else if (firstCommand == "$ban") {
+		}
+		else if (firstCommand == "$ban") {
 			if (splitCommands.size() != 2) {
 				h2mod->write_inner_chat_dynamic(L"Invalid ban command, usage - $ban GAMERTAG");
 				return;
 			}
+
+			//TODO: enable when ban is ready
+			h2mod->write_inner_chat_dynamic(L"not ready yet");
+			return;
+
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
 
 			if (!isServer) {
 				h2mod->write_inner_chat_dynamic(L"Only the server can ban players");
-				return;
 			}
-
-			if (isLobby) {
-				//TODO: the nameToPlayerIndexMap is based on in game player indexes
-				//it is not used while in game, so the indexes aren't right
-				h2mod->write_inner_chat_dynamic(L"Banning from lobby with player index or name won't work yet..");
-				return;
+			else {
+				ban(firstArg.c_str());
 			}
-			ban(cstr);
 		}
 		else if (firstCommand == "$mute") {
-			if (splitCommands.size() != 3) {
-				h2mod->write_inner_chat_dynamic(L"Invalid mute command, usage - $mute GAMERTAG BAN_FLAG(true/false)");
+			if (splitCommands.size() < 2) {
+				h2mod->write_inner_chat_dynamic(L"Invalid mute command, usage - $mute GAMERTAG");
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
 
+			/*
 			std::string secondArg = splitCommands[2];
-			bool ban = secondArg == "true" ? true : false;
+			bool ban = secondArg == "true" ? true : false;*/
 
-			mute(cstr, ban);
-
-			delete[] cstr;
+			try {
+				mute(firstArg.c_str(), false);
+			}
+			catch (...) {
+				TRACE("Error trying to mute");
+			}
 		}
 		else if (firstCommand == "$unmute") {
-			if (splitCommands.size() != 2) {
+			if (splitCommands.size() < 2) {
 				h2mod->write_inner_chat_dynamic(L"Invalid mute command, usage - $unmute GAMERTAG");
 				return;
 			}
 			std::string firstArg = splitCommands[1];
-			char *cstr = new char[firstArg.length() + 1];
-			strcpy(cstr, firstArg.c_str());
-
-			unmute(cstr);
-
-			delete[] cstr;
+			try {
+				unmute(firstArg.c_str());
+			}	catch (...) {
+				TRACE("Error trying to unmute");
+			}
 		}
 		else if (firstCommand == "$setchatmode") {
 			//TODO: use command socket to set chat modes for client
@@ -221,6 +189,7 @@ void ChatBoxCommands::handle_command(std::string command) {
 				h2mod->write_inner_chat_dynamic(L"Invalid listPlayers command, usage - $listPlayers");
 				return;
 			}
+
 			if (!isServer) {
 				h2mod->write_inner_chat_dynamic(L"listPlayers can only be used on the server");
 				return;
@@ -232,22 +201,31 @@ void ChatBoxCommands::handle_command(std::string command) {
 				h2mod->write_inner_chat_dynamic(L"Invalid listBannedPlayers command, usage - $listBannedPlayers");
 				return;
 			}
+
+			//TODO: enable when ban is ready
+			h2mod->write_inner_chat_dynamic(L"not ready yet");
+			return;
+
 			if (!isServer) {
 				h2mod->write_inner_chat_dynamic(L"listBannedPlayers can only be used on the server");
 				return;
 			}
 			listBannedPlayers();
-		} else if (firstCommand == "$printdistance") {
+		}
+		else if (firstCommand == "$printdistance") {
 			if (splitCommands.size() != 3) {
 				h2mod->write_inner_chat_dynamic(L"Invalid $printDistance command, usage - $printDistance playerIndex1 playerIndex2");
 				return;
 			}
 
-			/*Don't commit this, turn back on later
+			//TODO: enable when ready
+			h2mod->write_inner_chat_dynamic(L"not ready yet");
+			return;
+
 			if (!isServer) {
 				h2mod->write_inner_chat_dynamic(L"printDistance can only be used on the server");
 				return;
-			}*/
+			}
 
 			std::string firstArg = splitCommands[1];
 			if (!isNum(firstArg.c_str())) {
@@ -262,7 +240,8 @@ void ChatBoxCommands::handle_command(std::string command) {
 			}
 			int player2 = atoi(secondArg.c_str());
 			printDistance(player1, player2);
-		}	else if (firstCommand == "$setvoiceactivationlevel") {
+		}
+		else if (firstCommand == "$setvoiceactivationlevel") {
 			if (splitCommands.size() != 2) {
 				h2mod->write_inner_chat_dynamic(L"Invalid $setVoiceActivationLevel command, usage - $setVoiceActivationLevel activationLevel(-50 to 50)");
 				return;
@@ -275,10 +254,116 @@ void ChatBoxCommands::handle_command(std::string command) {
 			}
 			float activationLevel = ::atof(firstArg.c_str());
 			if (activationLevel < MIN_VOICE_ACTIVATION_LEVEL || activationLevel > MAX_VOICE_ACTIVATION_LEVEL) {
-				h2mod->write_inner_chat_dynamic(L"activation level is not between -50 and 50, default is -45");
+				h2mod->write_inner_chat_dynamic(L"activation level is not between -50 and 50, default is -25.0f");
 			}
 
 			setVoiceActivationLevel(activationLevel);
+		}
+		else if (firstCommand == "$unban") {
+			//TODO: unbanning would involve being able to unban by name, or address, or xuid
+			//TODO: check for unban all, and unban everyone
+
+			//TODO: enable when ban is ready
+			h2mod->write_inner_chat_dynamic(L"not ready yet");
+			return;
+		}
+		else if (firstCommand == "$getplayerindex") {
+			if (splitCommands.size() != 2) {
+				h2mod->write_inner_chat_dynamic(L"Invalid $getplayerindex command, usage - $getplayerindex player_name");
+				return;
+			}
+			std::string firstArg = splitCommands[1];
+			H2Player& player = players->getPlayer(firstArg.c_str());
+
+			std::wstringstream oss;
+			oss << "Player " << firstArg.c_str() << " index is = " << player.index;
+			h2mod->write_inner_chat_dynamic(oss.str().c_str());
+		}
+		else if (firstCommand == "$getpeerindex") {
+			if (splitCommands.size() != 2) {
+				h2mod->write_inner_chat_dynamic(L"Invalid $getpeerindex command, usage - $getplayerindex player_name");
+				return;
+			}
+			std::string firstArg = splitCommands[1];
+			H2Player& player = players->getPlayer(firstArg.c_str());
+
+			std::wstringstream oss;
+			oss << "Peer " << firstArg.c_str() << " index is = " << player.peer;
+			h2mod->write_inner_chat_dynamic(oss.str().c_str());
+		}
+		else if (firstCommand == "$muteall") {
+			if (splitCommands.size() != 1) {
+				h2mod->write_inner_chat_dynamic(L"Invalid command, usage - $muteAll");
+				return;
+			}
+
+			for (int i = 0; i < 15; i++) {
+				H2Player& player = players->getPlayer(i);
+
+				if (player.index != -1) {
+					//TODO: fix
+					//mute(player.name.c_str(), true);
+				}
+			}
+		}
+		else if (firstCommand == "$unmuteall") {
+			if (splitCommands.size() != 1) {
+				h2mod->write_inner_chat_dynamic(L"Invalid command, usage - $unmuteAll");
+				return;
+			}
+
+			for (int i = 0; i < 15; i++) {
+				H2Player& player = players->getPlayer(i);
+
+				if (player.index != -1) {
+					//TODO: fix
+					//unmute(player.name.c_str());
+				}
+			}
+		}
+		else if (firstCommand == "$reloadmaps") {
+			if (splitCommands.size() != 1) {
+				h2mod->write_inner_chat_dynamic(L"Invalid command, usage - $reloadMaps");
+				return;
+			}
+
+			mapManager->reloadMaps();
+		}
+		else if (firstCommand == "$printmemory") {
+			//TODO: for troubleshooting only
+		}
+		else if (firstCommand == "$spawn") {
+			if (splitCommands.size() != 2) {
+				h2mod->write_inner_chat_dynamic(L"Invalid command, usage $spawn ");
+				return;
+			}
+
+			std::string firstArg = splitCommands[1];
+
+			printf("string object_datum = %s", firstArg.c_str());
+
+			unsigned int object_datum = strtoul(firstArg.c_str(), NULL, 0);
+			printf("object_datum: %08X\n", object_datum);
+			TRACE_GAME("object_datum = %08X", object_datum);
+
+			char* nObject = new char[0xC4];
+			DWORD dwBack;
+			VirtualProtect(nObject, 0xC4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+			if (object_datum)
+			{
+				unsigned int player_datum = h2mod->get_unit_datum_from_player_index(0);
+				call_object_placement_data_new(nObject, object_datum, player_datum, 0);
+
+				*(float*)(nObject + 0x1C) = h2mod->get_player_x(0, true);
+				*(float*)(nObject + 0x20) = h2mod->get_player_y(0, true);
+				*(float*)(nObject + 0x24) = (h2mod->get_player_z(0, true) + 5.0f);
+
+				unsigned int object_gamestate_datum = call_object_new(nObject);
+				call_add_object_to_sync(object_gamestate_datum);
+
+
+			}
 		}
 	}
 }

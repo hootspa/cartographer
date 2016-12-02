@@ -1,28 +1,29 @@
 #include "Globals.h"
 
-TSUsers* tsUsers = new TSUsers(); 
-std::unordered_map<XUID, int> xuidPlayerIndexMap;
-std::unordered_map<char*, XUID> nameToXuidIndexMap;
-std::unordered_map<char*, int> nameToPlayerIndexMap;
+//all these global variables live till the app closes
+
+TSUsers* tsUsers = new TSUsers();
 TSClient* client = NULL;
 TSServer* server = NULL;
+
+MapManager* mapManager = new MapManager();
+
 //TODO: only really works once the teamspeak client has opened the microphone up and validated it could, till then we just assume the microphone is enabled
 //we need something a bit nicer for this
 bool microphoneEnabled = true;
-bool stopClient;
-bool stopServer;
 //always assume client is server unless they join a game which is called before xsessioncreate
 //which creates or connects to teh team speak server
 bool isServer = true;
 bool isLobby = true;
+bool overrideUnicodeMessage = false;
 
-HANDLE *currentSessionHandle;
-
-CLIENT_CHAT_MODE clientChatMode = ALL_PLAYERS;
+CLIENT_CHAT_MODE clientChatMode = TEAM;
 
 ChatBoxCommands* commands = new ChatBoxCommands();
 
 IN_ADDR clientMachineAddress = {};
+
+H2Players* players = new H2Players();
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
 	std::stringstream ss(s);

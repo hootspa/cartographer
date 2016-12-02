@@ -3,14 +3,19 @@
 #include "packet.pb.h"
 #include <time.h>
 #include <sstream>
+//TODO: may need xlive_network.h here
 #include "Globals.h"
+
+extern int broadcast_server_port;
 
 extern ULONG broadcast_server;
 extern SOCKET boundsock;
-extern char g_szEmail[32];
-extern char g_szPassword[32];
+extern char g_szToken[32];
 extern CHAR g_szUserName[4][16 + 1];
 extern XUID xFakeXuid[4];
+extern UINT g_port;
+extern ULONG g_lWANIP;
+extern ULONG g_lLANIP;
 
 
 CUser Users[16];
@@ -89,12 +94,14 @@ ULONG CUserManagement::GetSecureFromXN(XNADDR* pxna)
 				CUser *nUser = new CUser;
 
 				memset(&nUser->pxna, 0x00, sizeof(XNADDR));
-
+				nUser->pxna.wPortOnline = htons((short)RecvPak.sreply().port());
+				
 				nUser->pxna.ina.s_addr = RecvPak.sreply().xnaddr();
 				nUser->pxna.inaOnline.s_addr = secure;
 				memcpy(nUser->pxna.abEnet, RecvPak.sreply().abenet().c_str(), 6);
 				memcpy(nUser->pxna.abOnline, RecvPak.sreply().abonline().c_str(), 20);
 
+				TRACE("GetSecureFromXN() - nUser->pxna.wPortOnline: %i", ntohs(nUser->pxna.wPortOnline));
 				TRACE("GetSecureFromXN() - secure: %08X", secure);
 				TRACE("GetSecureFromXN() - pxna->xnaddr: %08X", pxna->ina.s_addr);
 
@@ -105,7 +112,6 @@ ULONG CUserManagement::GetSecureFromXN(XNADDR* pxna)
 				this->xnmap[secure] = pxna->ina.s_addr;
 				this->xntosecure[ab] = secure;
 	
-
 				RecvPak.Clear();
 				break;
 			
@@ -142,7 +148,7 @@ void CUserManagement::CreateUser(XNADDR* pxna)
 	nUser->bValid = true;
 
 	/*
-		In theory to handle mutliple instance servers in the future what we can do is populate the port field of CreateUser,
+		In theory to handle multiple instance servers in the future what we can do is populate the port field of CreateUser,
 		Then map the shit before we actually attempt a connection to the server here...
 
 		That way we intercept it and don't even have to modify the game's engine.
@@ -157,18 +163,39 @@ void CUserManagement::CreateUser(XNADDR* pxna)
 		This should allow us to handle servers listening on any port without much effort or engine modification.
 	*/
 
-	std::pair <ULONG, SHORT> hostpair = std::make_pair(pxna->ina.s_addr, htons(1001)); // FIX ME ^, this is gonna get really fucked when servers listen on other ports...
-	std::pair <ULONG, SHORT> hostpair_1000 = std::make_pair(pxna->ina.s_addr, htons(1000)); // FIX ME ^
+	short nPort_base = pxna->wPortOnline;
+	short nPort_join = htons( ntohs(pxna->wPortOnline) + 1 );
+	
+	TRACE("CreateUser - nPort_base: %i", ntohs(nPort_base));
+	TRACE("CreateUser - nPort_join: %i", ntohs(nPort_join));
+
+	std::pair <ULONG, SHORT> hostpair = std::make_pair(pxna->ina.s_addr, nPort_join);
+	std::pair <ULONG, SHORT> hostpair_1000 = std::make_pair(pxna->ina.s_addr, nPort_base);
+
+	//std::pair <ULONG, SHORT> hostpair = std::make_pair(pxna->ina.s_addr, htons(1001)); // FIX ME ^, this is gonna get really fucked when servers listen on other ports...
+	//std::pair <ULONG, SHORT> hostpair_1000 = std::make_pair(pxna->ina.s_addr, htons(1000)); // FIX ME ^
+
+
+	if (g_lWANIP == pxna->ina.s_addr)
+	{
+		std::pair <ULONG, SHORT> hostpair_or = std::make_pair(g_lLANIP, nPort_join);
+		std::pair <ULONG, SHORT> hostpair_1000_or = std::make_pair(g_lLANIP, nPort_base);
+
+		this->smap[hostpair_or] = secure;
+		this->smap[hostpair_1000_or] = secure;
+
+	}
 
 	this->smap[hostpair] = secure;
 	this->smap[hostpair_1000] = secure;
 	this->cusers[secure] = nUser;
 	this->xnmap[secure] = pxna->ina.s_addr;
 	this->xntosecure[ab] = secure;
-
-	// We're basically racing here but haven't encountered issues yet, does the game handle this some how?
-	this->pmap_a[secure] = htons(1000); // FIX ME, ^ SEE ABOVE 1000 STATIC DEF.
-	this->pmap_b[secure] = htons(1001); // FIX ME, ^ SEE ABOVE 1001 STATIC DEF.
+	
+	this->pmap_a[secure] = nPort_base;
+	this->pmap_b[secure] = nPort_join;
+	//this->pmap_a[secure] = htons(1000); // FIX ME, ^ SEE ABOVE 1000 STATIC DEF.
+	//this->pmap_b[secure] = htons(1001); // FIX ME, ^ SEE ABOVE 1001 STATIC DEF.
 
 }
 
@@ -233,13 +260,14 @@ ULONG CUserManagement::GetXNFromSecure(ULONG secure)
 			{
 				TRACE("GetXNFromSecure() - Reading Xreply data");
 				xnaddress = RecvPak.xreply().xnaddr();
-				short port = RecvPak.xreply().port();
+				short recvport = (short)RecvPak.xreply().port();
 				std::string abEnet = RecvPak.xreply().abenet();
 				std::string abOnline = RecvPak.xreply().abonline();
 
 				CUser *nUser = new CUser;
 				memset(&nUser->pxna, 0x00, sizeof(XNADDR));
-
+				
+				nUser->pxna.wPortOnline = htons(recvport);
 				nUser->pxna.ina.s_addr = xnaddress;
 				nUser->pxna.inaOnline.s_addr = secure;
 
@@ -248,6 +276,7 @@ ULONG CUserManagement::GetXNFromSecure(ULONG secure)
 				nUser->pina.s_addr = secure;
 				nUser->bValid = true;
 
+				TRACE("GetXNFromSecure() - nUser->pxna.wPortOnline: %i", ntohs(nUser->pxna.wPortOnline));
 				TRACE("GetXNFromSecure() - secure: %08X", secure);
 				TRACE("GetXNFromSecure() - xnaddr: %08X", xnaddress);
 
@@ -274,67 +303,42 @@ ULONG CUserManagement::GetXNFromSecure(ULONG secure)
 
 void CUserManagement::UnregisterSecureAddr(const IN_ADDR ina)
 {
-	this->cusers_mutex.lock();
-		CUser* deluser = cusers[ina.s_addr];
-		this->cusers.erase(ina.s_addr);
-	this->cusers_mutex.unlock();
+	CUser* deluser = cusers[ina.s_addr];
+	this->cusers.erase(ina.s_addr);
+
 
 	if (deluser != 0)
 	{
-		this->cusers_mutex.lock(); // this lock is probably unnecessary
-
-			std::string ab(reinterpret_cast<const char*>(deluser->pxna.abEnet), 6);
+		std::string ab(reinterpret_cast<const char*>(deluser->pxna.abEnet), 6);
+		delete[] deluser;
 			
-			delete[] deluser;
-			
-		this->cusers_mutex.unlock();
-
-		this->xntosecure_mutex.lock();
 		if (xntosecure[ab] != 0)
 			xntosecure.erase(ab);
 		else
 			TRACE("XNetUnregisterInAddr() xntosecure couldn't find that abenet");
-		this->xntosecure_mutex.unlock();
 
-		this->xnmap_mutex.lock();
+
 		if (xnmap[ina.s_addr])
 			xnmap.erase(ina.s_addr);
 		else
 			TRACE("XNetUnregisterInAddr() xnmap couldn't find that secure address");
-		this->xnmap_mutex.unlock();
-
-		this->pmap_a_mutex.lock();
-		this->pmap_b_mutex.lock();
-		this->sentmap_mutex.lock();
 
 		std::pair <ULONG, SHORT> hostpair = std::make_pair(ina.s_addr, pmap_a[ina.s_addr]);
 		std::pair <ULONG, SHORT> hostpair2 = std::make_pair(ina.s_addr, pmap_b[ina.s_addr]);
 
-			this->sentmap.erase(hostpair);
-			this->sentmap.erase(hostpair2);
+		this->sentmap.erase(hostpair);
+		this->sentmap.erase(hostpair2);
 
-		this->pmap_a_mutex.unlock();
-		this->pmap_b_mutex.unlock();
-		this->sentmap_mutex.unlock();
-
-		this->pmap_a_mutex.lock();
 		if (pmap_a[ina.s_addr])
 			pmap_a.erase(ina.s_addr);
 		else
 			TRACE("XNetUnregisterInAddr() pmap_a couldn't find that secure address");
-		this->pmap_a_mutex.unlock();
 
-		this->pmap_b_mutex.lock();
 		if (pmap_b[ina.s_addr])
 			pmap_b.erase(ina.s_addr);
 		else
 			TRACE("XnetUnregisterInAddr() pmap_b couldn't find that secure address");
-		this->pmap_b_mutex.unlock();
-
-
-		this->smap_mutex.lock();
 		
-
 		typedef std::unordered_map<std::pair<ULONG, SHORT>, ULONG>::iterator it_type;
 
 		for (it_type iterator = smap.begin(); iterator != smap.end(); ++iterator)
@@ -347,15 +351,15 @@ void CUserManagement::UnregisterSecureAddr(const IN_ADDR ina)
 			}
 		}
 
-		this->smap_mutex.unlock();
 	}
 
 }
 
 
-void CUserManagement::RegisterLocalRequest(char* email,char* password)
+void CUserManagement::RegisterLocalRequest(char* token)
 {
-	TRACE("CUserManagement::RegisterLocalRequest(%s,%s)", email,password);
+	//TRACE("CUserManagement::RegisterLocalRequest(%ws)", token);
+	//TRACE("CUserManagement::RegisterLocalRequest(%s,%s)", email,password);
 	u_long xnaddress;
 	sockaddr_in RecvAddr;
 
@@ -383,8 +387,8 @@ void CUserManagement::RegisterLocalRequest(char* email,char* password)
 	lrequest.set_type(Packet_Type_login_request);
 
 	login_request *ldata = lrequest.mutable_lrequest();
-	ldata->set_email(email);
-	ldata->set_password(password);
+	ldata->set_login_token(token);
+	ldata->set_port(g_port);
 
 	char *lreq = new char[lrequest.ByteSize()];
 
@@ -417,7 +421,11 @@ void CUserManagement::RegisterLocalRequest(char* email,char* password)
 			Users[0].pina.s_addr = secured_addr;
 			Users[0].pxna.ina.s_addr = _xnaddr;
 			Users[0].pxna.inaOnline.s_addr = secured_addr;
-			Users[0].pxna.wPortOnline = 0x0000;
+			Users[0].pxna.wPortOnline = htons((short)RecvPak.lreply().port());
+
+			TRACE("Users[0].pxna.wPortOnline: %i",ntohs(Users[0].pxna.wPortOnline));
+
+			//Users[0].pxna.wPortOnline = 0x0000;
 
 			xFakeXuid[0] = RecvPak.lreply().xuid();
 
@@ -462,7 +470,7 @@ BOOL CUserManagement::GetLocalXNAddr(XNADDR* pxna)
 	}
 
 	TRACE("GetLocalXNADDR: User data not populated yet calling LocalRegister()");
-	this->RegisterLocalRequest(g_szEmail,g_szPassword);
+	this->RegisterLocalRequest(g_szToken);
 
 	return FALSE;
 }

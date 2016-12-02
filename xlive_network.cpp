@@ -6,16 +6,23 @@
 #include <time.h>
 #include <thread>
 #include "h2mod.h"
-#include <mutex>
-#include "h2mod.h"
+#include "xlive_network.h"
 #include "Globals.h"
+#include <mutex>
 
 extern ULONG broadcast_server;
+extern UINT g_port;
+extern ULONG g_lLANIP;
+extern ULONG g_lWANIP;
+bool isHost;
+bool Connected = false;
+bool ThreadCreated = false;
+bool NetworkActive = true;
 
+HANDLE H2MOD_Network = NULL;
 SOCKET boundsock = INVALID_SOCKET;
 SOCKET game_sock = INVALID_SOCKET;
 SOCKET game_sock_1000 = INVALID_SOCKET;
-
 
 CUserManagement User;
 clock_t begin, end;
@@ -35,6 +42,7 @@ float getElapsedNetworkTime(void) {
 // #5310: XOnlineStartup
 int WINAPI XOnlineStartup()
 {
+	NetworkActive = true;
 	//TRACE("XOnlineStartup");
 	ServerStatus = new char[250];
 	QueryPerformanceFrequency(&timerFreq);
@@ -53,25 +61,79 @@ int WINAPI XOnlineStartup()
 }
 
 
+// #5332: XSessionEnd
+int WINAPI XSessionEnd(DWORD, DWORD)
+{
+	isHost = false;
+	NetworkActive = false;
+	Connected = false;
+	ThreadCreated = false;
+	H2MOD_Network = 0;
+
+	TRACE("XSessionEnd");
+	cleanupClientAndServer();
+	return 0;
+}
+
+
+
+// #52: XNetCleanup
+INT WINAPI XNetCleanup()
+{
+	NetworkActive = false;
+	ThreadCreated = false;
+	Connected = false;
+	isHost = false;
+	H2MOD_Network = 0;
+
+	TRACE("XNetCleanup");
+	return 0;
+}
+
+
+
 
 // #11: XSocketBind
 SOCKET WINAPI XSocketBind(SOCKET s, const struct sockaddr *name, int namelen)
 {
 	int port = (((struct sockaddr_in*)name)->sin_port);
 
-	
 	if (ntohs(port) == 1001)
 	{
+		((struct sockaddr_in*)name)->sin_port = htons(((short)g_port)+1);
 		game_sock = s;
+		int nport = (((struct sockaddr_in*)name)->sin_port);
 		TRACE("game_sock set for port %i", ntohs(port));
+		TRACE("connect_port set to %i instead of %i", ntohs(nport), ntohs(port));
+		TRACE("g_port was set to %i", g_port);
 	}
 
 	if (ntohs(port) == 1000)
 	{
+		((struct sockaddr_in*)name)->sin_port = htons((short)g_port);
 		game_sock_1000 = s;
+		int nport = (((struct sockaddr_in*)name)->sin_port);
+
 		TRACE("game_sock set for port %i", ntohs(port));
+		TRACE("base_port set to %i instead of %i", ntohs(nport), ntohs(port));
+		TRACE("g_port was set to %i", g_port);
 	}
 
+	if (ntohs(port) == 1002)
+		((struct sockaddr_in*)name)->sin_port = htons(((short)g_port) + 2);
+	if (ntohs(port) == 1003)
+		((struct sockaddr_in*)name)->sin_port = htons(((short)g_port) + 3);
+	if (ntohs(port) == 1004)
+		((struct sockaddr_in*)name)->sin_port = htons(((short)g_port) + 4);
+	if (ntohs(port) == 1005)
+		((struct sockaddr_in*)name)->sin_port = htons(((short)g_port) + 5);
+	if(ntohs(port) == 1006)
+		((struct sockaddr_in*)name)->sin_port = htons(((short)g_port) + 6);
+
+
+
+	
+	
 	User.sockmap[s] = ntohs(port);
 
 
@@ -106,12 +168,34 @@ INT WINAPI XNetCreateKey(XNKID * pxnkid, XNKEY * pxnkey)
 		memset(pxnkey, 0XAA, sizeof(XNKEY));
 
 		pxnkid->ab[0] &= ~XNET_XNKID_MASK;
-		pxnkid->ab[0] |= XNET_XNKID_SYSTEM_LINK;
-
+		pxnkid->ab[0] |= XNET_XNKID_ONLINE_PEER;
+		
+		NetworkActive = false;
 		//only the server ever creates the session key
 		isServer = true;
+		isHost = true;
+		if (H2MOD_Network == 0 && ThreadCreated == false)
+		{
+			ThreadCreated = true;
+			int Data_of_network_Thread = 1;
+			H2MOD_Network = CreateThread(NULL, 0, NetworkThread, &Data_of_network_Thread, 0, NULL);
+		}
 
 	}
+	
+
+	/*if (H2MOD_Network == 0 && ThreadCreated == false)
+	{
+		ThreadCreated = true;
+		int Data_of_network_Thread = 1;
+		H2MOD_Network = CreateThread(NULL, 0, NetworkThread, &Data_of_network_Thread, 0, NULL);
+	}*/
+	//HANDLE Handle_Of_Thread_1 = 0;
+	//int Data_Of_Thread_1 = 1;
+	//Handle_Of_Thread_1 = CreateThread(NULL, 0,
+	//	Thread1, &Data_Of_Thread_1, 0, NULL);
+
+	
 	return 0;
 }
 
@@ -121,6 +205,7 @@ INT WINAPI XNetXnAddrToInAddr(XNADDR *pxna, XNKID *pnkid, IN_ADDR *pina)
 	TRACE("XNetXNAddrToInAddr - ina.s_addr: %08X", pxna->ina.s_addr);
 	TRACE("XNetXNAddrToInAddr - secure: %08X", pxna->inaOnline.s_addr);
 	ULONG secure = pxna->inaOnline.s_addr;
+	
 
 
 	if (secure !=0)
@@ -211,14 +296,14 @@ int WINAPI XSocketSendTo(SOCKET s, const char *buf, int len, int flags, sockaddr
 	if (iplong == INADDR_BROADCAST || iplong == 0x00)
 	{
 		(((struct sockaddr_in*)to)->sin_addr.s_addr) = broadcast_server;
-		TRACE("XSocketSendTo - Broadcast");
+		//TRACE("XSocketSendTo - Broadcast");
 
 		return sendto(s, buf, len, flags, to, tolen);
 	}
 
+	//TRACE("XSocketSendTo: ( %08X:%i )", iplong, htons(port));
+
 		
-
-
 		/*
 			Create new SOCKADDR_IN structure,
 			If we overwrite the original the game's security functions know it's not a secure address any longer.
@@ -243,34 +328,31 @@ int WINAPI XSocketSendTo(SOCKET s, const char *buf, int len, int flags, sockaddr
 			case 1000:
 				nPort = User.pmap_a[iplong];
 
-
 				if (nPort != 0)
 				{
+					//TRACE("XSocketSendTo() port 1000 nPort: %i secure: %08X", htons(nPort), iplong);
 					SendStruct.sin_port = nPort;
 				}
+
 			break;
 
 			case 1001:
 				nPort = User.pmap_b[iplong];
 
-
-
 				if (nPort != 0)
 				{
+					//TRACE("XSocketSendTo() port 1001 nPort: %i secure: %08X", htons(nPort), iplong);
 					SendStruct.sin_port = nPort;
 				}
 
 			break;
 
 			default:
-				TRACE("XSocketSendTo() port: %i not matched!", htons(port));
+				//TRACE("XSocketSendTo() port: %i not matched!", htons(port));
 			break;
 		}
 
-		std::pair <ULONG, SHORT> hostpair = std::make_pair(iplong, SendStruct.sin_port);
-
 		u_long xn = User.xnmap[iplong];
-
 
 		if (xn != 0)
 		{
@@ -280,7 +362,16 @@ int WINAPI XSocketSendTo(SOCKET s, const char *buf, int len, int flags, sockaddr
 		{
 			SendStruct.sin_addr.s_addr = User.GetXNFromSecure(iplong);
 		}
-    
+
+		//TRACE("SendStruct.sin_addr.s_addr == %08X", SendStruct.sin_addr.s_addr);
+		
+		if (SendStruct.sin_addr.s_addr == g_lWANIP) 
+		{
+			//TRACE("Matched g_lWANIP:%08X", g_lWANIP);
+			SendStruct.sin_addr.s_addr = g_lLANIP;
+			//TRACE("Replaced send struct s_addr with g_lLANIP: %08X", g_lLANIP);
+		}
+
 	int ret = sendto(s, buf, len, flags, (SOCKADDR *) &SendStruct, sizeof(SendStruct));
 
 	if (ret == SOCKET_ERROR)
@@ -310,16 +401,25 @@ int WINAPI XSocketRecvFrom(SOCKET s, char *buf, int len, int flags, sockaddr *fr
 
 		u_long iplong = (((struct sockaddr_in*)from)->sin_addr.s_addr);
 		short port    =	(((struct sockaddr_in*)from)->sin_port);
+		
 		std::pair <ULONG, SHORT> hostpair = std::make_pair(iplong,port); 
 
 		if (iplong != broadcast_server)
 		{
-
+	
 			if (*(ULONG*)buf == 0x11223344)
 			{
-				TRACE("XSocketRecvFrom() Got security packet form iplong: %08X:%i", iplong,htons(port));
-					User.smap[hostpair] = *(ULONG*)(buf+4);
-				TRACE("XSocketRecvFrom() Security packet address: %08X", *(ULONG*)(buf + 4));
+				User.smap[hostpair] = *(ULONG*)(buf + 4);
+				
+				/* Hacky fix, basically if someone swaps IPs we cached their data so we should check if the cached version is still correct. */
+				CUser* user = User.cusers[*(ULONG*)(buf + 4)];
+				if (user)
+				{
+					if (user->pxna.ina.s_addr != iplong)
+					{
+						user->pxna.ina.s_addr = iplong;
+					}
+				}
 
 				ret = 0;
 			}
@@ -327,13 +427,17 @@ int WINAPI XSocketRecvFrom(SOCKET s, char *buf, int len, int flags, sockaddr *fr
 
 			ULONG secure = User.smap[hostpair];
 
-
 			(((struct sockaddr_in*)from)->sin_addr.s_addr) = secure;
 
 			if (secure == 0)
 			{
-				TRACE("This is probably the issue.... now the fucking recv address is 0 you numb nuts. iplong: %08X, port: %08X",iplong,htons(port));
+				//TRACE("This is probably the issue.... now the fucking recv address is 0 you numb nuts. iplong: %08X, port: %08X",iplong,htons(port));
 			}
+			else
+			{
+				User.xnmap[secure] = iplong;
+			}
+
 			/* Store NAT data 
 			   First we look at our socket's intended port.
 			   port 1000 is mapped to the receiving port pmap_a via the secure address.
@@ -342,15 +446,17 @@ int WINAPI XSocketRecvFrom(SOCKET s, char *buf, int len, int flags, sockaddr *fr
 			switch (User.sockmap[s])
 			{
 				case 1000:
+					//TRACE("XSocketRecvFrom() User.sockmap mapping port 1000 - port: %i, secure: %08X", htons(port), secure);
 						User.pmap_a[secure] = port;
 				break;
 
 				case 1001:
+					//TRACE("XSocketRecvFrom() User.sockmap mapping port 1001 - port: %i, secure: %08X", htons(port), secure);
 						User.pmap_b[secure] = port;
 				break;
 
 				default:
-					TRACE("XSocketRecvFrom() User.sockmap[s] didn't match any ports!");
+					//TRACE("XSocketRecvFrom() User.sockmap[s] didn't match any ports!");
 				break;
 
 			}
@@ -374,6 +480,8 @@ int WINAPI XNetRegisterKey(DWORD, DWORD)
 // #56: XNetUnregisterKey // need #51
 int WINAPI XNetUnregisterKey(DWORD)
 {
+	isHost = false;
+	Connected = false;
 	TRACE("XNetUnregisterKey");
 	return 0;
 }
@@ -382,7 +490,7 @@ int WINAPI XNetUnregisterKey(DWORD)
 INT   WINAPI XNetInAddrToXnAddr(const IN_ADDR ina, XNADDR * pxna, XNKID * pxnkid)
 {
 	CUser* user = User.cusers[ina.s_addr];
-	
+
 	if (user != 0)
 	{
 		memset(pxna, 0x00, sizeof(XNADDR)); // Zero memory of the current buffer passed to us by the game.
@@ -395,11 +503,9 @@ INT   WINAPI XNetInAddrToXnAddr(const IN_ADDR ina, XNADDR * pxna, XNKID * pxnkid
 
 		ULONG xnaddr = User.GetXNFromSecure(ina.s_addr);
 		user = User.cusers[ina.s_addr];
-	
 
 		memset(pxna, 0x00, sizeof(XNADDR)); // Zero the memory of the current buffer before doing the copy.
 		memcpy(pxna, &user->pxna, sizeof(XNADDR));
-
 	}
 
 	return 0;
@@ -408,18 +514,13 @@ INT   WINAPI XNetInAddrToXnAddr(const IN_ADDR ina, XNADDR * pxna, XNKID * pxnkid
 // #63: XNetUnregisterInAddr
 int WINAPI XNetUnregisterInAddr(const IN_ADDR ina)
 {
-
-	/*
-
-	  I'm thinking about ditching the unregister... 
-	  Due to the fact it won't consume too much memory not doing it and it will basically just cache everyone's shit.
-	  
-	  So it's a matter of if we want to reduce resource usage and reduce performance at the same time, or increase performance and increase resource usage.
-	  
-	  Most people have enough RAM these days we can get away with leaving this as a hacky ass implementation
-
-	  */
 	//User.UnregisterSecureAddr(ina);
+	
+	for (auto it = h2mod->NetworkPlayers.begin(); it != h2mod->NetworkPlayers.end(); ++it)
+	{
+		if (it->first->secure == ina.s_addr) it->second = 0;
+	}
+
 	TRACE("XNetUnregisterInAddr: %08X",ina.s_addr);
 	return 0;
 }

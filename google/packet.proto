@@ -1,0 +1,59 @@
+syntax = 'proto2';
+
+message Packet {
+
+ enum Type {
+  login_request = 2;
+  login_reply = 3;
+  secure_request = 4;
+  secure_reply = 5;
+  xnaddr_request = 6;
+  xnaddr_reply = 7;
+ }
+ required Packet.Type type = 1;
+ optional login_request lrequest = 2;
+ optional login_reply lreply = 3;
+ optional secure_request srequest = 4;
+ optional secure_reply sreply = 5;
+ optional xnaddr_request xrequest = 6;
+ optional xnaddr_reply xreply = 7;
+}
+
+message login_request {
+ required bytes login_token = 1;
+ required uint32 port = 2;
+}
+
+message login_reply {
+ required uint32 secure_addr = 1;
+ required uint32 xnaddr = 2;
+ required int32 port = 3;
+ required bytes abEnet = 4;
+ required bytes abOnline = 5;
+ required int64 xuid = 6;
+ required bytes username = 7;
+}
+
+message secure_request {
+ required bytes abEnet = 1;
+}
+
+message secure_reply {
+ required uint32 secure = 1;
+ required uint32 xnaddr = 2;
+ required uint32 port = 3;
+ required bytes abEnet = 4;
+ required bytes abOnline = 5;
+}
+
+message xnaddr_request {
+ required uint32 secure = 1;
+}
+
+message xnaddr_reply {
+ required uint32 xnaddr = 1;
+ required uint32 port = 2;
+ required bytes abEnet = 3;
+ required bytes abOnline = 4;
+}
+

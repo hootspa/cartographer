@@ -297,43 +297,38 @@ class login_request : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required bytes email = 1;
-  inline bool has_email() const;
-  inline void clear_email();
-  static const int kEmailFieldNumber = 1;
-  inline const ::std::string& email() const;
-  inline void set_email(const ::std::string& value);
-  inline void set_email(const char* value);
-  inline void set_email(const void* value, size_t size);
-  inline ::std::string* mutable_email();
-  inline ::std::string* release_email();
-  inline void set_allocated_email(::std::string* email);
+  // required bytes login_token = 1;
+  inline bool has_login_token() const;
+  inline void clear_login_token();
+  static const int kLoginTokenFieldNumber = 1;
+  inline const ::std::string& login_token() const;
+  inline void set_login_token(const ::std::string& value);
+  inline void set_login_token(const char* value);
+  inline void set_login_token(const void* value, size_t size);
+  inline ::std::string* mutable_login_token();
+  inline ::std::string* release_login_token();
+  inline void set_allocated_login_token(::std::string* login_token);
 
-  // required bytes password = 2;
-  inline bool has_password() const;
-  inline void clear_password();
-  static const int kPasswordFieldNumber = 2;
-  inline const ::std::string& password() const;
-  inline void set_password(const ::std::string& value);
-  inline void set_password(const char* value);
-  inline void set_password(const void* value, size_t size);
-  inline ::std::string* mutable_password();
-  inline ::std::string* release_password();
-  inline void set_allocated_password(::std::string* password);
+  // required uint32 port = 2;
+  inline bool has_port() const;
+  inline void clear_port();
+  static const int kPortFieldNumber = 2;
+  inline ::google::protobuf::uint32 port() const;
+  inline void set_port(::google::protobuf::uint32 value);
 
   // @@protoc_insertion_point(class_scope:login_request)
  private:
-  inline void set_has_email();
-  inline void clear_has_email();
-  inline void set_has_password();
-  inline void clear_has_password();
+  inline void set_has_login_token();
+  inline void clear_has_login_token();
+  inline void set_has_port();
+  inline void clear_has_port();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint32 _has_bits_[1];
   mutable int _cached_size_;
-  ::std::string* email_;
-  ::std::string* password_;
+  ::std::string* login_token_;
+  ::google::protobuf::uint32 port_;
   friend void  protobuf_AddDesc_packet_2eproto();
   friend void protobuf_AssignDesc_packet_2eproto();
   friend void protobuf_ShutdownFile_packet_2eproto();
@@ -1188,156 +1183,104 @@ inline void Packet::set_allocated_xreply(::xnaddr_reply* xreply) {
 
 // login_request
 
-// required bytes email = 1;
-inline bool login_request::has_email() const {
+// required bytes login_token = 1;
+inline bool login_request::has_login_token() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void login_request::set_has_email() {
+inline void login_request::set_has_login_token() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void login_request::clear_has_email() {
+inline void login_request::clear_has_login_token() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void login_request::clear_email() {
-  if (email_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    email_->clear();
+inline void login_request::clear_login_token() {
+  if (login_token_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    login_token_->clear();
   }
-  clear_has_email();
+  clear_has_login_token();
 }
-inline const ::std::string& login_request::email() const {
-  // @@protoc_insertion_point(field_get:login_request.email)
-  return *email_;
+inline const ::std::string& login_request::login_token() const {
+  // @@protoc_insertion_point(field_get:login_request.login_token)
+  return *login_token_;
 }
-inline void login_request::set_email(const ::std::string& value) {
-  set_has_email();
-  if (email_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    email_ = new ::std::string;
+inline void login_request::set_login_token(const ::std::string& value) {
+  set_has_login_token();
+  if (login_token_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    login_token_ = new ::std::string;
   }
-  email_->assign(value);
-  // @@protoc_insertion_point(field_set:login_request.email)
+  login_token_->assign(value);
+  // @@protoc_insertion_point(field_set:login_request.login_token)
 }
-inline void login_request::set_email(const char* value) {
-  set_has_email();
-  if (email_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    email_ = new ::std::string;
+inline void login_request::set_login_token(const char* value) {
+  set_has_login_token();
+  if (login_token_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    login_token_ = new ::std::string;
   }
-  email_->assign(value);
-  // @@protoc_insertion_point(field_set_char:login_request.email)
+  login_token_->assign(value);
+  // @@protoc_insertion_point(field_set_char:login_request.login_token)
 }
-inline void login_request::set_email(const void* value, size_t size) {
-  set_has_email();
-  if (email_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    email_ = new ::std::string;
+inline void login_request::set_login_token(const void* value, size_t size) {
+  set_has_login_token();
+  if (login_token_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    login_token_ = new ::std::string;
   }
-  email_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:login_request.email)
+  login_token_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:login_request.login_token)
 }
-inline ::std::string* login_request::mutable_email() {
-  set_has_email();
-  if (email_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    email_ = new ::std::string;
+inline ::std::string* login_request::mutable_login_token() {
+  set_has_login_token();
+  if (login_token_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    login_token_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:login_request.email)
-  return email_;
+  // @@protoc_insertion_point(field_mutable:login_request.login_token)
+  return login_token_;
 }
-inline ::std::string* login_request::release_email() {
-  clear_has_email();
-  if (email_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+inline ::std::string* login_request::release_login_token() {
+  clear_has_login_token();
+  if (login_token_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     return NULL;
   } else {
-    ::std::string* temp = email_;
-    email_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    ::std::string* temp = login_token_;
+    login_token_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     return temp;
   }
 }
-inline void login_request::set_allocated_email(::std::string* email) {
-  if (email_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete email_;
+inline void login_request::set_allocated_login_token(::std::string* login_token) {
+  if (login_token_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete login_token_;
   }
-  if (email) {
-    set_has_email();
-    email_ = email;
+  if (login_token) {
+    set_has_login_token();
+    login_token_ = login_token;
   } else {
-    clear_has_email();
-    email_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    clear_has_login_token();
+    login_token_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:login_request.email)
+  // @@protoc_insertion_point(field_set_allocated:login_request.login_token)
 }
 
-// required bytes password = 2;
-inline bool login_request::has_password() const {
+// required uint32 port = 2;
+inline bool login_request::has_port() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void login_request::set_has_password() {
+inline void login_request::set_has_port() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void login_request::clear_has_password() {
+inline void login_request::clear_has_port() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void login_request::clear_password() {
-  if (password_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    password_->clear();
-  }
-  clear_has_password();
+inline void login_request::clear_port() {
+  port_ = 0u;
+  clear_has_port();
 }
-inline const ::std::string& login_request::password() const {
-  // @@protoc_insertion_point(field_get:login_request.password)
-  return *password_;
+inline ::google::protobuf::uint32 login_request::port() const {
+  // @@protoc_insertion_point(field_get:login_request.port)
+  return port_;
 }
-inline void login_request::set_password(const ::std::string& value) {
-  set_has_password();
-  if (password_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    password_ = new ::std::string;
-  }
-  password_->assign(value);
-  // @@protoc_insertion_point(field_set:login_request.password)
-}
-inline void login_request::set_password(const char* value) {
-  set_has_password();
-  if (password_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    password_ = new ::std::string;
-  }
-  password_->assign(value);
-  // @@protoc_insertion_point(field_set_char:login_request.password)
-}
-inline void login_request::set_password(const void* value, size_t size) {
-  set_has_password();
-  if (password_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    password_ = new ::std::string;
-  }
-  password_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:login_request.password)
-}
-inline ::std::string* login_request::mutable_password() {
-  set_has_password();
-  if (password_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    password_ = new ::std::string;
-  }
-  // @@protoc_insertion_point(field_mutable:login_request.password)
-  return password_;
-}
-inline ::std::string* login_request::release_password() {
-  clear_has_password();
-  if (password_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    return NULL;
-  } else {
-    ::std::string* temp = password_;
-    password_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-    return temp;
-  }
-}
-inline void login_request::set_allocated_password(::std::string* password) {
-  if (password_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete password_;
-  }
-  if (password) {
-    set_has_password();
-    password_ = password;
-  } else {
-    clear_has_password();
-    password_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  }
-  // @@protoc_insertion_point(field_set_allocated:login_request.password)
+inline void login_request::set_port(::google::protobuf::uint32 value) {
+  set_has_port();
+  port_ = value;
+  // @@protoc_insertion_point(field_set:login_request.port)
 }
 
 // -------------------------------------------------------------------

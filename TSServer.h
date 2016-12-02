@@ -10,21 +10,20 @@ public:
 	TSServer(bool log);
 	virtual ~TSServer();
 	void startListening();
-	void setPort(unsigned int port); 
+	void setPort(unsigned int port);
 	void setConnectClient(bool connectClient);
+	//only dedicated team speak servers don't need to connect as client
+	//unless some server admin wants to listen to the team speak
+	bool connectClient = true;
+	void destroyVirtualServer();
 
 private:
 	//needed for licensing, one ts server per machine
 	char keyPairFilename[BUFSIZ];
 	uint64 serverID;
 	unsigned int port;
-	//only dedicated team speak servers don't need to connect as client
-	//unless some server admin wants to listen to the team speak
-	bool connectClient = true;
 
-	void listenForChat();
 	void createVirtualServer();
-	void destroyVirtualServer();
 	void firstTimeValidateLicense(const char *keyPair);
 	static int readKeyPairFromFile(const char *fileName, char *keyPair);
 	static int writeKeyPairToFile(const char *fileName, const char* keyPair);

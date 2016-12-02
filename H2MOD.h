@@ -3,9 +3,29 @@
 #define H2MOD_H
 #include "Hook.h"
 #include <unordered_map>
-#include "xliveless.h"
+#include <mutex>
 
+enum GrenadeType
+{
+	Frag = 0,
+	Plasma = 1
+};
 
+enum SoundType
+{
+	TeamChange = 1,
+	GainedTheLead = 2,
+	LostTheLead = 3,
+	Slayer = 4
+};
+
+enum BipedType
+{
+	MasterChief = 0,
+	Arbiter = 1,
+	Spartan = 2,
+	Elite = 3
+};
 
 enum Weapon
 {
@@ -49,54 +69,77 @@ enum Weapon
 	juggernaut_powerup = 0xF33838D2 //35
 };
 
-int __cdecl call_get_object(signed int object_datum_index, int object_type);
-int __cdecl call_unit_get_team_index(int unit_datum_index);
+signed int call_object_create(int a1, bool bClone);
+int __cdecl call_get_object(unsigned int object_datum_index, int object_type);
 int __cdecl call_unit_reset_equipment(int unit_datum_index);
+bool __cdecl call_add_object_to_sync(int gamestate_object_datum);
 int __cdecl call_hs_object_destroy(int object_datum_index);
 signed int __cdecl call_unit_inventory_next_weapon(unsigned short unit_datum_index);
 bool __cdecl call_assign_equipment_to_unit(int uint, int object_index, short unk);
 int __cdecl call_object_placement_data_new(void*, int, int, int);
 signed int __cdecl call_object_new(void*);
-void GivePlayerWeapon(int PlayerIndex, int WeaponId);
+void GivePlayerWeapon(int PlayerIndex, int WeaponId, bool bReset);
+DWORD WINAPI NetworkThread(LPVOID lParam);
 
+char __cdecl clientXboxLiveCheck4(int a1);
+
+class NetworkPlayer
+{
+	public:
+		wchar_t* PlayerName;
+		SHORT port;
+		ULONG addr;
+		ULONG secure;
+		bool PacketsAvailable;
+		char* PacketData;
+		size_t PacketSize;
+};
 
 class H2MOD
 {
 public:
-	void Initialize();
-	void EstablishNetwork();
-	int get_unit_from_player_index(int);
-	int get_unit_datum_from_player_index(int);
-	int get_unit_team_index(int);
+		std::wstring getCustomLobbyMessage();
+		void Initialize();
+		int get_unit_from_player_index(int);
+		int get_unit_datum_from_player_index(int);
 
+		BOOL is_same_team(int p1, int p2);
+		void kick_player(int playerIndex);
+		IN_ADDR get_server_address();
+		int get_dynamic_player_base(int playerIndex, bool resetDynamicBase);
+		int get_player_count(); 
+		float get_player_x(int, bool);
+		float get_player_y(int, bool);
+		float get_player_z(int, bool);
+		float get_distance(int, int);
+		bool is_team_play();
+		IN_ADDR get_player_ip(int playerIndex);
+		void handle_command(std::string);
+		void write_inner_chat_dynamic(const wchar_t* data);
+		int write_chat_dynamic(const wchar_t* data);
+		int write_chat_literal(const wchar_t* data);		void ApplyHooks();
+		DWORD GetBase();
+		wchar_t* get_local_player_name();
+		wchar_t* get_player_name_from_index(int pIndex);
+		int get_player_index_from_name(wchar_t* playername);
+		int get_player_index_from_unit_datum(int unit_datum_index);
+		BYTE get_unit_team_index(int unit_datum_index);
+		void set_unit_team_index(int unit_datum_index, BYTE team);
+		void set_unit_biped(BYTE biped, int pIndex);
+		void set_local_team_index(BYTE team);
+		BYTE get_local_team_index();
+		void set_unit_grenades(BYTE type, BYTE count, int pIndex, bool bReset);
+		void set_local_grenades(BYTE type, BYTE count, int pIndex);
+		void DisableSound(int sound);
+		BOOL Server;
+		std::unordered_map<NetworkPlayer*, bool> NetworkPlayers;
+		std::unordered_map<wchar_t*, int> SoundMap;
+		std::mutex sound_mutex;
 
-	BOOL is_same_team(int p1, int p2);
-	BYTE get_team_id(int playerIndex);
-	void kick_player(int playerIndex);
-	IN_ADDR get_server_address();
-	int get_dynamic_player_base(int playerIndex, bool resetDynamicBase);
-	int get_player_count();
-	float get_player_x(int, bool);
-	float get_player_y(int, bool);
-	float get_player_z(int, bool);
-	float get_distance(int, int);
-	void get_player_name2(int playerIndex, char* buffer, int size);
-	void get_player_name(int, char*, int);
-	IN_ADDR get_player_ip(int playerIndex);
-	void handle_command(std::string);
-	DWORD get_generated_id(int);
-	XUID get_xuid(int);
-	//int is_server();
-	void write_inner_chat_dynamic(const wchar_t* data);
-	int write_chat_dynamic(const wchar_t* data);
-	int write_chat_literal(const wchar_t* data);
-	void ApplyHooks();
-	DWORD GetBase();
-		
-	BOOL Server;
+		std::string currentchatstr;
+		std::unordered_map<int, int> playerIndexToDynamicBase;
 private:
-	std::unordered_map<int, int> playerIndexToDynamicBase;
-	DWORD Base;
+		DWORD Base;
 };
 
 

@@ -6,7 +6,7 @@ enum COLOR { red, yellow, green, purple, oragne, brown, pink };
 
 //3 different chat modes allowed for each client
 enum CLIENT_CHAT_MODE {
-	ALL_PLAYERS,
+	TEAM,
 	PROXIMITY,
 	OFF
 };
@@ -28,35 +28,54 @@ enum CLIENT_CHAT_MODE {
 #include "TSServer.h"
 #include "H2ChatBoxCommands.h"
 #include "H2Ban.h"
+#include "H2Players.h"
+#include "H2MOD_MapManager.h"
 
-
+//mix of voice and game globals
+//TODO: move into H2Server
 extern TSUsers* tsUsers;
-
-extern std::unordered_map<XUID, int> xuidPlayerIndexMap;
-extern std::unordered_map<char*, XUID> nameToXuidIndexMap;
-extern std::unordered_map<char*, int> nameToPlayerIndexMap;
-
 extern TSClient* client;
-extern bool stopClient;
-
 extern TSServer* server;
+extern XNADDR join_game_xn;
+
+extern CHAR customMapDownloadLink[128];
+extern CHAR customMapZipDownloadLink[128];
+
+extern MapManager* mapManager;
+
 extern IN_ADDR clientMachineAddress;
-extern bool stopServer;
 //xnetcreatekey sets this to true
 //xsessiondelete/end set this to false
 extern bool isServer;
-
 extern bool microphoneEnabled;
-
 extern bool isLobby;
-
+extern bool overrideUnicodeMessage;
 extern CLIENT_CHAT_MODE clientChatMode;
-
 extern ChatBoxCommands* commands;
 
-extern HANDLE *currentSessionHandle;
+//some utility functions below
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
 std::vector<std::string> split(const std::string &s, char delim);
 int stripWhitespace(wchar_t *inputStr);
+
+extern H2Players* players;
+
+template<class T>
+class InstancesCount {
+	static int instance_count;
+public:
+	InstancesCount() {
+		instance_count++;
+	}
+	~InstancesCount() {
+		instance_count--;
+	}
+	static void print() {
+		TRACE_GAME_N("Instance type %s count %d", typeid(T).name(), instance_count);
+	}
+};
+
+template<class T>
+int InstancesCount<T>::instance_count = 0;
 #endif

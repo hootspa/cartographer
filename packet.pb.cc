@@ -74,8 +74,8 @@ void protobuf_AssignDesc_packet_2eproto() {
   Packet_Type_descriptor_ = Packet_descriptor_->enum_type(0);
   login_request_descriptor_ = file->message_type(1);
   static const int login_request_offsets_[2] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(login_request, email_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(login_request, password_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(login_request, login_token_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(login_request, port_),
   };
   login_request_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -239,17 +239,17 @@ void protobuf_AddDesc_packet_2eproto() {
     "ddr_reply\"v\n\004Type\022\021\n\rlogin_request\020\002\022\017\n\013"
     "login_reply\020\003\022\022\n\016secure_request\020\004\022\020\n\014sec"
     "ure_reply\020\005\022\022\n\016xnaddr_request\020\006\022\020\n\014xnadd"
-    "r_reply\020\007\"0\n\rlogin_request\022\r\n\005email\030\001 \002("
-    "\014\022\020\n\010password\030\002 \002(\014\"\202\001\n\013login_reply\022\023\n\013s"
-    "ecure_addr\030\001 \002(\r\022\016\n\006xnaddr\030\002 \002(\r\022\014\n\004port"
-    "\030\003 \002(\005\022\016\n\006abEnet\030\004 \002(\014\022\020\n\010abOnline\030\005 \002(\014"
-    "\022\014\n\004xuid\030\006 \002(\003\022\020\n\010username\030\007 \002(\014\" \n\016secu"
-    "re_request\022\016\n\006abEnet\030\001 \002(\014\"^\n\014secure_rep"
-    "ly\022\016\n\006secure\030\001 \002(\r\022\016\n\006xnaddr\030\002 \002(\r\022\014\n\004po"
-    "rt\030\003 \002(\r\022\016\n\006abEnet\030\004 \002(\014\022\020\n\010abOnline\030\005 \002"
-    "(\014\" \n\016xnaddr_request\022\016\n\006secure\030\001 \002(\r\"N\n\014"
-    "xnaddr_reply\022\016\n\006xnaddr\030\001 \002(\r\022\014\n\004port\030\002 \002"
-    "(\r\022\016\n\006abEnet\030\003 \002(\014\022\020\n\010abOnline\030\004 \002(\014", 796);
+    "r_reply\020\007\"2\n\rlogin_request\022\023\n\013login_toke"
+    "n\030\001 \002(\014\022\014\n\004port\030\002 \002(\r\"\202\001\n\013login_reply\022\023\n"
+    "\013secure_addr\030\001 \002(\r\022\016\n\006xnaddr\030\002 \002(\r\022\014\n\004po"
+    "rt\030\003 \002(\005\022\016\n\006abEnet\030\004 \002(\014\022\020\n\010abOnline\030\005 \002"
+    "(\014\022\014\n\004xuid\030\006 \002(\003\022\020\n\010username\030\007 \002(\014\" \n\016se"
+    "cure_request\022\016\n\006abEnet\030\001 \002(\014\"^\n\014secure_r"
+    "eply\022\016\n\006secure\030\001 \002(\r\022\016\n\006xnaddr\030\002 \002(\r\022\014\n\004"
+    "port\030\003 \002(\r\022\016\n\006abEnet\030\004 \002(\014\022\020\n\010abOnline\030\005"
+    " \002(\014\" \n\016xnaddr_request\022\016\n\006secure\030\001 \002(\r\"N"
+    "\n\014xnaddr_reply\022\016\n\006xnaddr\030\001 \002(\r\022\014\n\004port\030\002"
+    " \002(\r\022\016\n\006abEnet\030\003 \002(\014\022\020\n\010abOnline\030\004 \002(\014", 798);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "packet.proto", &protobuf_RegisterTypes);
   Packet::default_instance_ = new Packet();
@@ -821,8 +821,8 @@ void Packet::Swap(Packet* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int login_request::kEmailFieldNumber;
-const int login_request::kPasswordFieldNumber;
+const int login_request::kLoginTokenFieldNumber;
+const int login_request::kPortFieldNumber;
 #endif  // !_MSC_VER
 
 login_request::login_request()
@@ -844,8 +844,8 @@ login_request::login_request(const login_request& from)
 void login_request::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
-  email_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  password_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  login_token_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  port_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -855,11 +855,8 @@ login_request::~login_request() {
 }
 
 void login_request::SharedDtor() {
-  if (email_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete email_;
-  }
-  if (password_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete password_;
+  if (login_token_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete login_token_;
   }
   if (this != default_instance_) {
   }
@@ -888,16 +885,12 @@ login_request* login_request::New() const {
 
 void login_request::Clear() {
   if (_has_bits_[0 / 32] & 3) {
-    if (has_email()) {
-      if (email_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        email_->clear();
+    if (has_login_token()) {
+      if (login_token_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        login_token_->clear();
       }
     }
-    if (has_password()) {
-      if (password_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        password_->clear();
-      }
-    }
+    port_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -913,24 +906,26 @@ bool login_request::MergePartialFromCodedStream(
     tag = p.first;
     if (!p.second) goto handle_unusual;
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required bytes email = 1;
+      // required bytes login_token = 1;
       case 1: {
         if (tag == 10) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
-                input, this->mutable_email()));
+                input, this->mutable_login_token()));
         } else {
           goto handle_unusual;
         }
-        if (input->ExpectTag(18)) goto parse_password;
+        if (input->ExpectTag(16)) goto parse_port;
         break;
       }
 
-      // required bytes password = 2;
+      // required uint32 port = 2;
       case 2: {
-        if (tag == 18) {
-         parse_password:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
-                input, this->mutable_password()));
+        if (tag == 16) {
+         parse_port:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &port_)));
+          set_has_port();
         } else {
           goto handle_unusual;
         }
@@ -963,16 +958,15 @@ failure:
 void login_request::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
   // @@protoc_insertion_point(serialize_start:login_request)
-  // required bytes email = 1;
-  if (has_email()) {
+  // required bytes login_token = 1;
+  if (has_login_token()) {
     ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
-      1, this->email(), output);
+      1, this->login_token(), output);
   }
 
-  // required bytes password = 2;
-  if (has_password()) {
-    ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
-      2, this->password(), output);
+  // required uint32 port = 2;
+  if (has_port()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->port(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -985,18 +979,16 @@ void login_request::SerializeWithCachedSizes(
 ::google::protobuf::uint8* login_request::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
   // @@protoc_insertion_point(serialize_to_array_start:login_request)
-  // required bytes email = 1;
-  if (has_email()) {
+  // required bytes login_token = 1;
+  if (has_login_token()) {
     target =
       ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
-        1, this->email(), target);
+        1, this->login_token(), target);
   }
 
-  // required bytes password = 2;
-  if (has_password()) {
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
-        2, this->password(), target);
+  // required uint32 port = 2;
+  if (has_port()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(2, this->port(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -1011,18 +1003,18 @@ int login_request::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required bytes email = 1;
-    if (has_email()) {
+    // required bytes login_token = 1;
+    if (has_login_token()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::BytesSize(
-          this->email());
+          this->login_token());
     }
 
-    // required bytes password = 2;
-    if (has_password()) {
+    // required uint32 port = 2;
+    if (has_port()) {
       total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::BytesSize(
-          this->password());
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->port());
     }
 
   }
@@ -1052,11 +1044,11 @@ void login_request::MergeFrom(const ::google::protobuf::Message& from) {
 void login_request::MergeFrom(const login_request& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_email()) {
-      set_email(from.email());
+    if (from.has_login_token()) {
+      set_login_token(from.login_token());
     }
-    if (from.has_password()) {
-      set_password(from.password());
+    if (from.has_port()) {
+      set_port(from.port());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -1082,8 +1074,8 @@ bool login_request::IsInitialized() const {
 
 void login_request::Swap(login_request* other) {
   if (other != this) {
-    std::swap(email_, other->email_);
-    std::swap(password_, other->password_);
+    std::swap(login_token_, other->login_token_);
+    std::swap(port_, other->port_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
