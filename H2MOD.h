@@ -98,6 +98,7 @@ class NetworkPlayer
 class H2MOD
 {
 public:
+		std::wstring getCustomLobbyMessage();
 		void Initialize();
 		int get_unit_from_player_index(int);
 		int get_unit_datum_from_player_index(int);

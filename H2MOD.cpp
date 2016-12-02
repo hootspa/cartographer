@@ -44,6 +44,7 @@ Infection *inf = new Infection();
 
 bool b_Infection = false;
 
+extern MapManager* mapManager;
 extern bool b_GunGame;
 extern CUserManagement User;
 extern ULONG g_lLANIP;
@@ -69,6 +70,11 @@ char __cdecl add_object_to_sync(int game_state_object_datum)
 1B8D14
 
 */
+
+std::wstring H2MOD::getCustomLobbyMessage()
+{
+	return mapManager->getCustomLobbyMessage();
+}
 
 bool __cdecl call_add_object_to_sync(int gamestate_object_datum)
 {
@@ -603,6 +609,7 @@ int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 	if (*(WORD *)(a3 + 34) > 0)
 	{
 		v6 = a3 + 6294;
+		
 		do {
 			int playerIndex = *(WORD *)(v6 - 2);
 			TRACE_GAME_N("Server Membership Update: Player-index = %d", playerIndex);
@@ -621,7 +628,7 @@ int __cdecl writeMembershipUpdate(int a1, int a2, int a3) {
 			}
 			if (*(BYTE *)(v6 + 16))	{
 				wchar_t* playerName = (wchar_t*)(v6 + 154);
-				TRACE_GAME("Server Membership Update: Player-name = %s", playerName);
+				TRACE_GAME_N("Server Membership Update: Player-name = %s", playerName);
 				TRACE_GAME_N("Server Membership Update: Player-team = %d", *(BYTE *)(v6 + 154 + 124));
 
 				//update player cache
@@ -660,6 +667,7 @@ bool __cdecl readMembershipUpdate(int a1, int a2, int a3) {
 
 	if (*(WORD *)(a3 + 34) > 0) {
 		v19 = a3 + 6304;
+		
 		do {
 			TRACE_GAME_N("Client Membership Update: Player-index = %d", *(WORD *)(v19 - 12));
 			if (*(XUID*)(v19 - 8) > 0) {
@@ -670,6 +678,7 @@ bool __cdecl readMembershipUpdate(int a1, int a2, int a3) {
 				wsprintf(strw, L"%I64x", *(XUID*)(v19 - 8));
 				wcstombs(strw3, strw, 8192);
 				XUID id = _atoi64(strw3);
+				
 				TRACE_GAME_N("Client Membership Update: Player-xuid = %s, Peer-index = %d", strw, peerIndex);
 				players->updatePlayerId(*(WORD *)(v19 - 12), id, peerIndex);
 			}
@@ -971,24 +980,11 @@ int H2MOD::write_chat_literal(const wchar_t* data) {
 typedef int(__stdcall *show_download_dialog)(BYTE* thisx);
 show_download_dialog show_download_dialog_method;
 
-std::wstring CUSTOM_MAP = L"Custom Map";
-wchar_t empty2 = '\0';
-
 int __stdcall showDownloadDialog(BYTE* thisx) {
-	wchar_t* currentMapName = (wchar_t*)(h2mod->GetBase() + 0x97737C);
 
-	DWORD dwBack;
-	VirtualProtect(currentMapName, 4, PAGE_EXECUTE_READWRITE, &dwBack);	
-	//TODO: expensive, consider just working with the existing currentMapName pointer
-	std::wstring ucurrentMapName(currentMapName);
-
-	overrideUnicodeMessage = true;
-
-	BOOL excludeMaps = wcscmp(currentMapName, CUSTOM_MAP.c_str()) == 0;
-	if (!ucurrentMapName.empty() && !excludeMaps && !mapManager->hasCheckedMapAlready(currentMapName)) {
+	if (mapManager->canDownload()) {
 		mapManager->startMapDownload();
 	}
-	VirtualProtect(currentMapName, 4, dwBack, NULL);
 
 	//do nothing instead, so people don't get kicked from the game
 	return 0;
@@ -1594,11 +1590,11 @@ signed int __cdecl stringDisplayHook(int a3, unsigned int a4, int a5, int a6) {
 			//std::wstring tempStr(temp);
 			/*
 			if (tempStr == L"") {
-				__debugbreak();
+			__debugbreak();
 			}*/
 			//TRACE("String=%s", temp);
 			//if (wcscmp(temp, WAITING_ORG.c_str()) == 0) {
-				//return string_display_hook_method(a3, a4, (int)(WAITING_REPLACE.c_str()), a6);
+			//return string_display_hook_method(a3, a4, (int)(WAITING_REPLACE.c_str()), a6);
 			//}
 			if (wcscmp(temp, YOU_FAILED_TO_LOAD_MAP_ORG.c_str()) == 0 && mapManager->getCustomLobbyMessage() != EMPTY_STR) {
 				//if we detect that we failed to load the map, we display different strings only for the duration of
@@ -1690,18 +1686,18 @@ void H2MOD::ApplyHooks()
 		read_text_chat_packet_method = (read_text_chat_packet)DetourFunc((BYTE*)this->GetBase() + 0x1ECEEB, (BYTE*)readTextChat, 6);		
 		VirtualProtect(read_text_chat_packet_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
+		//TODO: need to do something else to capture information from these two membership methods, too expensive to do in network calls
 		//read membership update
-		membership_update_read_packet_method = (membership_update_read_packet)DetourFunc((BYTE*)this->GetBase() + 0x1EFADD, (BYTE*)readMembershipUpdate, 7);
-		VirtualProtect(membership_update_read_packet_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		//membership_update_read_packet_method = (membership_update_read_packet)DetourFunc((BYTE*)this->GetBase() + 0x1EFADD, (BYTE*)readMembershipUpdate, 7);
+		//VirtualProtect(membership_update_read_packet_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		//write membership update
-		membership_update_write_packet_method = (membership_update_write_packet)DetourFunc((BYTE*)this->GetBase() + 0x1EF6B9, (BYTE*)writeMembershipUpdate, 6);
-		VirtualProtect(membership_update_write_packet_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
-		//
+		//membership_update_write_packet_method = (membership_update_write_packet)DetourFunc((BYTE*)this->GetBase() + 0x1EF6B9, (BYTE*)writeMembershipUpdate, 6);
+		//VirtualProtect(membership_update_write_packet_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
 		live_check_method = (live_check)DetourFunc((BYTE*)this->GetBase() + 0x1BA418, (BYTE*)clientXboxLiveCheck, 9);
 		VirtualProtect(live_check_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		//
 		live_check_method2 = (live_check2)DetourFunc((BYTE*)this->GetBase() + 0x1B1643, (BYTE*)clientXboxLiveCheck2, 9);
 		VirtualProtect(live_check_method2, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
@@ -1715,25 +1711,23 @@ void H2MOD::ApplyHooks()
 		VirtualProtect(live_check_method4, 4, PAGE_EXECUTE_READWRITE, &dwBack);*/
 
 		//0x24499F
-		show_download_dialog_method = (show_download_dialog)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x24499F, (BYTE*)showDownloadDialog, 6);
-		VirtualProtect(show_download_dialog_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		//TODO: turn on once performance issue is figured out.
+		//show_download_dialog_method = (show_download_dialog)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x24499F, (BYTE*)showDownloadDialog, 6);
+		//VirtualProtect(show_download_dialog_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		//display_string_hook_method = (display_string_hook)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x21BF85, (BYTE*)displayStringHook, 11);
 		//VirtualProtect(display_string_hook_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		//TODO: add accesscolorbytes1 (better than below for string follows, cause it access the non unicode version of the string)
-		//some of the unicode strings are drawn and their callpaths will just lead to some generic drawing code
-
-		//turn on if you want follow string display calls (in a debugger)
 		string_display_hook_method = (string_display_hook)DetourFunc((BYTE*)h2mod->GetBase() + 0x287AB5, (BYTE*)stringDisplayHook, 5);
 		VirtualProtect(string_display_hook_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		//0x1C7FE0
 		send_text_chat_method = (send_text_chat)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x1C7FE0, (BYTE*)sendTextChat, 11);
 		VirtualProtect(send_text_chat_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
-
-		is_debugger_present_method = (is_debugger_present)DetourFunc((BYTE*)h2mod->GetBase() + 0x39B394, (BYTE*)isDebuggerPresent, 5);
-		VirtualProtect(is_debugger_present_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		
+		//TODO: turn on if you want to debug halo2.exe from start of process
+		//is_debugger_present_method = (is_debugger_present)DetourFunc((BYTE*)h2mod->GetBase() + 0x39B394, (BYTE*)isDebuggerPresent, 5);
+		//VirtualProtect(is_debugger_present_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		/* experimental live flags
 		DWORD* isLive = (DWORD*)(h2mod->GetBase() + 0x422450);

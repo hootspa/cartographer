@@ -36,11 +36,11 @@ void ChatBoxCommands::kick(const char* playerName) {
 	int peerIndex = player.peer;
 
 	if (peerIndex == -1) {
-		h2mod->write_inner_chat_dynamic(L"Could not find player index");
+		h2mod->write_inner_chat_dynamic(L"Could not find peer index");
 		return;
 	}
 
-	TRACE_GAME_N("About to kick player index %d for player name %s", peerIndex, playerName);
+	TRACE_GAME_N("About to kick peer index %d for player name %s", peerIndex, playerName);
 	h2mod->kick_player(peerIndex);
 }
 
@@ -330,8 +330,7 @@ void ChatBoxCommands::handle_command(std::string command) {
 			mapManager->reloadMaps();
 		}
 		else if (firstCommand == "$printmemory") {
-
-			//InstancesCount<H2Player>::print();
+			//TODO: for troubleshooting only
 		}
 		else if (firstCommand == "$spawn") {
 			if (splitCommands.size() != 2) {

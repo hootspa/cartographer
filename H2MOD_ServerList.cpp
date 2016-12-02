@@ -24,7 +24,7 @@ DWORD cProperties;                      // number of custom properties.
 PXUSER_PROPERTY pProperties;            // an array of custom properties.
 } XLOCATOR_SEARCHRESULT, *PXLOCATOR_SEARCHRESULT;
 */
-void Request(int Method, LPCSTR Host, LPCSTR url, LPCSTR header, LPSTR data)
+void Request(int Method, LPCSTR Host, LPCSTR url, LPCSTR header, LPSTR data, ResponseHandler* responseHandler)
 {
 	try {
 		//Retrieve default http user agent
@@ -87,21 +87,25 @@ void Request(int Method, LPCSTR Host, LPCSTR url, LPCSTR header, LPSTR data)
 
 						pMessageBody[dwBytesRead] = '\0';
 						
-						json11::Json json;
-						std::string json_err;
-						json = json.parse((char*)pMessageBody, json_err);
-					
-						
-					//	char MsgBox[255];
-					//	sprintf(MsgBox, "dwMaxPublicSlots: %i", json["dwMaxPublicSlots"].int_value());
-
-					//MessageBoxA(NULL, MsgBox,  "Test Json", MB_OK);
+						if (responseHandler == NULL) {
+							json11::Json json;
+							std::string json_err;
+							json = json.parse((char*)pMessageBody, json_err);
 
 
+							//	char MsgBox[255];
+							//	sprintf(MsgBox, "dwMaxPublicSlots: %i", json["dwMaxPublicSlots"].int_value());
+
+							//MessageBoxA(NULL, MsgBox,  "Test Json", MB_OK);
 
 
 
-						//printf("%s", pMessageBody);
+
+
+								//printf("%s", pMessageBody);
+						}	else {
+							responseHandler->handleResponse((char*)pMessageBody);
+						}
 						free(pMessageBody);
 					}
 
@@ -122,5 +126,10 @@ void GetServerList()
 	char* geturi = "/server_list.php";
 
 	wsprintfA(URL, geturi);
-	Request(GET, "cartographer.online", URL, NULL, NULL);
+	Request(GET, "cartographer.online", URL, NULL, NULL, NULL);
+}
+
+void ResponseHandler::handleResponse(char * pMessageBody)
+{
+	//do nothing by default
 }

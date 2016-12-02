@@ -1,7 +1,10 @@
 #include "Globals.h"
 #include <h2mod.pb.h>
 #include <fstream>
+#include "H2MOD_ServerList.h"
 #include <Urlmon.h>
+
+#pragma comment (lib, "urlmon.lib")
 
 #include <miniz.c>
 
@@ -13,8 +16,26 @@ std::wstring RELOADING_MAPS(L"Reloading maps in memory");
 std::wstring UNZIPPING_MAP_DOWNLOAD(L"Unzipping map download");
 std::wstring FAILED_TO_OPEN_ZIP_FILE(L"Failed to open the zip file");
 std::wstring STILL_SEARCHING_FOR_MAP(L"Could not find maps from server, still searching");
+std::wstring COULD_NOT_FIND_MAPS(L"Couldn't find the map");
 
-MapManager::MapManager() {}
+std::wstring CUSTOM_MAP = L"Custom Map";
+wchar_t empty2 = '\0';
+
+MapManager::MapManager() {
+	this->checkedMaps.insert(CUSTOM_MAP);
+}
+
+std::wstring MapManager::getCurrentMapName() {
+	wchar_t* currentMapName = (wchar_t*)(h2mod->GetBase() + 0x97737C);
+
+	DWORD dwBack;
+	VirtualProtect(currentMapName, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+	//set access for copy of the string
+	std::wstring ucurrentMapName(currentMapName);
+	VirtualProtect(currentMapName, 4, dwBack, NULL);
+
+	return ucurrentMapName;
+}
 
 bool MapManager::hasMap(std::wstring mapName) {
 	DWORD dwBack;
@@ -50,10 +71,6 @@ void MapManager::requestMapDownloadUrl(SOCKET comm_socket, SOCKADDR_IN SenderAdd
 	}
 }
 
-BOOL MapManager::hasCheckedMapAlready(std::wstring mapName) {
-	return this->checkedMaps.find(mapName) != checkedMaps.end();
-}
-
 void MapManager::reloadMaps() {
 	typedef char(__thiscall *possible_map_reload)(int thisx);
 	possible_map_reload map_reload_method = (possible_map_reload)(h2mod->GetBase() + 0x4D021);
@@ -75,12 +92,16 @@ void MapManager::resetMapDownloadUrl() {
 	this->mapDownloadUrl = "";
 	maxDownloads = 5;
 	this->checkedMaps.clear();
-	this->customLobbyMessage = L"";
 }
 
 void MapManager::setCustomLobbyMessage(std::wstring newStatus) {
 	this->customLobbyMessage = newStatus;
 	Sleep(750);
+}
+
+std::wstring MapManager::getCustomLobbyMessage()
+{
+	return this->customLobbyMessage;
 }
 
 void MapManager::unzipArchive(std::wstring localPath, std::wstring mapsDir) {
@@ -109,6 +130,14 @@ void MapManager::unzipArchive(std::wstring localPath, std::wstring mapsDir) {
 		if (!mz_zip_reader_is_file_a_directory(&zip_archive, i)) {
 			std::string zipDest(mapsDir.begin(), mapsDir.end());
 			std::string zipEntryFileName(file_stat.m_filename);
+
+			std::vector<std::string> v = split(zipEntryFileName, '.');
+
+			//TODO: this might not be the maps actual name in memory, might need to get that somehow
+
+			//each map unzipped gets counted as a checked map
+			this->checkedMaps.insert(std::wstring(v[0].begin(), v[0].end()));
+
 			zipDest += zipEntryFileName;
 			if (!mz_zip_reader_extract_to_file(&zip_archive, i, zipDest.c_str(), 0)) {
 				TRACE("Could not extract zip file");
@@ -138,6 +167,7 @@ BOOL MapManager::downloadMap(std::wstring mapName) {
 
 	this->setCustomLobbyMessage(DOWNLOADING_MAP);
 	//TODO: make async
+	//TODO: probably just use libcurl
 	HRESULT res = URLDownloadToFile(NULL, unicodeUrl.c_str(), localPath.c_str(), 0, NULL);
 
 	if (res == S_OK) {
@@ -166,10 +196,6 @@ BOOL MapManager::downloadMap(std::wstring mapName) {
 	return false;
 }
 
-std::wstring MapManager::getCustomLobbyMessage() {
-	return this->customLobbyMessage;
-}
-
 void MapManager::setMapDownloadUrl(std::string url) {
 	this->mapDownloadUrl = url;
 }
@@ -179,42 +205,129 @@ void MapManager::setMapDownloadType(std::string type) {
 }
 
 void MapManager::searchForMap() {
-	wchar_t* currentMapName = (wchar_t*)(h2mod->GetBase() + 0x97737C);
-	checkedMaps.insert(std::wstring(currentMapName));
-	if (isLobby) {
-		//only run in the lobby
-		//TODO: set read access on currentMapName
-		BOOL currentMapNameNotNull = currentMapName[0] != L' ';
-		BOOL currentGameMapDifferent = wcscmp(this->currentMap.c_str(), currentMapName) != 0; 
-		std::wstring mapName(currentMapName);
-		BOOL hasCurrentMap = hasMap(mapName);
-		if (currentMapNameNotNull, currentGameMapDifferent, !hasCurrentMap) {
-			int seconds = 10;
-			while (seconds > 0) {
-				this->setCustomLobbyMessage(WAITING_FOR_MAP_DOWNLOAD_URL);
-				if (!this->mapDownloadUrl.empty()) {
-					this->setCustomLobbyMessage(FOUND_MAP_DOWNLOAD_URL);
-					if (downloadMap(mapName)) {
-						//all done, complete
-						return;
-					}	else {
-						//try other downloading options
-						break;
-					}
-				}
-				Sleep(1000);
-				seconds--;
-			}
+	//run this thread once
+	overrideUnicodeMessage = true;
 
-			//map still isn't found try another way to find the map
-			this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP);
-			//TODO: use special search to try and find map by name
+	std::wstring currentMapName = this->getCurrentMapName();
+	//regardless what happens during the search, we only check for a map once per game session
+	checkedMaps.insert(currentMapName);
 
-		}
+	if (hasMap(currentMapName)) {
+		//if somehow we have the map and made it here, something is wrong, exit
+		TRACE_GAME_N("Map already exists, should not be searching for it");
+		return;
 	}
+
+	if (isLobby) {
+		//only run map searches if in lobby
+
+		if (this->downloadFromExternal()) {
+			return;
+		} 
+
+		this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP);
+		if (this->downloadFromUrl()) {
+			return;
+		} 
+
+		this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP);
+		//TODO: control via xlive property
+		if (this->downloadFromHost()) {
+			return;
+		}
+
+		this->setCustomLobbyMessage(COULD_NOT_FIND_MAPS);
+	}
+}
+
+bool MapManager::downloadFromUrl() {
+	std::wstring ucurrentMapName = this->getCurrentMapName();
+	int attempts = 10;
+	//this attempt logic exists soley because the hook that this triggers from could be called before
+	//the server has had a chance to send us a download url for the map, so we check if the url is set
+	//over every second for 10 seconds till we find it
+	while (attempts > 0) {
+		this->setCustomLobbyMessage(WAITING_FOR_MAP_DOWNLOAD_URL);
+		if (!this->mapDownloadUrl.empty()) {
+			this->setCustomLobbyMessage(FOUND_MAP_DOWNLOAD_URL);
+			if (downloadMap(ucurrentMapName)) {
+				//TODO: use constants
+				this->setCustomLobbyMessage(L"Finished");
+				this->setCustomLobbyMessage(L"");
+				return true;
+			}
+			else {
+				//try other downloading options
+				break;
+			}
+		}
+		Sleep(1000);
+		attempts--;
+	}
+	return false;
+}
+
+class TwigzieHandler : public ResponseHandler {
+	virtual void handleResponse(char* responseBody) {
+		TRACE_GAME_N("Response body=%s", responseBody);
+		//Soda Hil|http://dl.halomaps.org/dl.cfm?fid=2154&f=zbe_soda.zip&S=2&h=2B8C199DDBAFCB0CAF1A74DC0CB3E265
+	}
+};
+
+bool MapManager::downloadFromExternal() {
+	//TODO: use special search to try and find map by name
+
+	char URL[1024];
+	char* geturi = "api.aspx?action=1&sid=0&name=soda%20hil&json=false";
+
+	wsprintfA(URL, geturi);
+
+	TwigzieHandler* handler = new TwigzieHandler();
+	Request(0, "fantalitystudios.somee.com", URL, NULL, NULL, handler);
+	delete handler;
+	return false;
+}
+
+bool MapManager::downloadFromHost() {
+	//TODO: download directly from server
+	return false;
 }
 
 void MapManager::startMapDownload() {
 	std::thread t1(&MapManager::searchForMap, this);
 	t1.detach();
+}
+
+bool MapManager::canDownload() {
+	wchar_t* currentMapName = (wchar_t*)(h2mod->GetBase() + 0x97737C);
+
+	DWORD dwBack;
+	VirtualProtect(currentMapName, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+
+	
+	bool isMapNameEmpty = currentMapName == NULL || currentMapName[0] == L'\0';
+	if (isMapNameEmpty) {
+		//if pointer to map name is null or there is no string data, then we don't try to download
+		return false;
+	}
+
+	
+	bool isExcludedMap = wcscmp(currentMapName, CUSTOM_MAP.c_str()) == 0;
+	if (isExcludedMap) {
+		//if the map is named "custom map" don't download
+		return false;
+	}
+
+	for (auto  it = checkedMaps.begin(); it != checkedMaps.end(); ++it)	{
+		std::wstring checkedMap = *it;
+		
+		if (wcscmp(currentMapName, checkedMap.c_str()) == 0) {
+			//we already downloaded the map, no need to check for it again
+			return false;
+		}
+	}
+
+	VirtualProtect(currentMapName, 4, dwBack, NULL);
+
+	return false;
 }
