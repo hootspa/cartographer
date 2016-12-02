@@ -1710,11 +1710,12 @@ void H2MOD::ApplyHooks()
 		//membership_update_write_packet_method = (membership_update_write_packet)DetourFunc((BYTE*)this->GetBase() + 0x1EF6B9, (BYTE*)writeMembershipUpdate, 6);
 		//VirtualProtect(membership_update_write_packet_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		live_check_method = (live_check)DetourFunc((BYTE*)this->GetBase() + 0x1BA418, (BYTE*)clientXboxLiveCheck, 9);
-		VirtualProtect(live_check_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		//TODO: turn on live checks when ready for live list and map downloading
+		//live_check_method = (live_check)DetourFunc((BYTE*)this->GetBase() + 0x1BA418, (BYTE*)clientXboxLiveCheck, 9);
+		//VirtualProtect(live_check_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		live_check_method2 = (live_check2)DetourFunc((BYTE*)this->GetBase() + 0x1B1643, (BYTE*)clientXboxLiveCheck2, 9);
-		VirtualProtect(live_check_method2, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		//live_check_method2 = (live_check2)DetourFunc((BYTE*)this->GetBase() + 0x1B1643, (BYTE*)clientXboxLiveCheck2, 9);
+		//VirtualProtect(live_check_method2, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		/* don't seem to help (in finding ping)
 		//0x1AD782
