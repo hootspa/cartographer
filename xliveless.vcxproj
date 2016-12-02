@@ -175,6 +175,7 @@
     <ClCompile Include="H2MOD_Network.cpp" />
     <ClCompile Include="H2MOD_ServerList.cpp" />
     <ClCompile Include="H2Players.cpp" />
+    <ClCompile Include="H2MOD_Hitfix.cpp" />
     <ClCompile Include="Hook.cpp" />
     <ClCompile Include="json.cpp" />
     <ClCompile Include="miniz.c">
@@ -199,6 +200,7 @@
     <ClInclude Include="H2MOD.h" />
     <ClInclude Include="h2mod.pb.h" />
     <ClInclude Include="H2MOD_GunGame.h" />
+    <ClInclude Include="H2MOD_Hitfix.h" />
     <ClInclude Include="H2MOD_Infection.h" />
     <ClInclude Include="H2MOD_MapManager.h" />
     <ClInclude Include="H2MOD_Network.h" />
