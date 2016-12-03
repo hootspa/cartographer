@@ -166,7 +166,6 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="D3D.cpp" />
-    <ClCompile Include="H2MOD_Hitfix.h" />
     <ClCompile Include="H2Ban.cpp" />
     <ClCompile Include="H2ChatBoxCommands.cpp" />
     <ClCompile Include="H2MOD.cpp" />
@@ -185,6 +184,7 @@
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="packet.pb.cc" />
     <ClCompile Include="H2MOD_Infection.cpp" />
+    <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TSClient.cpp" />
     <ClCompile Include="TSServer.cpp" />
     <ClCompile Include="TSUsers.cpp" />
@@ -215,6 +215,7 @@
     <ClInclude Include="resource1.h" />
     <ClInclude Include="security\H2Security.h" />
     <ClInclude Include="security\H2SecurityMod.h" />
+    <ClInclude Include="stdafx.h" />
     <ClInclude Include="TSClient.h" />
     <ClInclude Include="TSServer.h" />
     <ClInclude Include="TSUsers.h" />
