@@ -1,4 +1,4 @@
-#include <windows.h>
+#include <Windows.h>
 #include "H2MOD_Hitfix.h"
 #include "xliveless.h"
 #include "H2MOD.h"
