@@ -6112,10 +6112,15 @@ BOOL IXHV2ENGINE::IsHeadsetPresent(VOID *pThis, DWORD dwUserIndex) {
 
 	//TODO: add logic that actually validates their audio device is connected
 	//TODO: handle it being connected and disconnected
-	return true;
+
+	//TODO: turn off till voice is ready
+	return false;
 }
 
 BOOL IXHV2ENGINE::isRemoteTalking(VOID *pThis, XUID xuid) {
+	//TODO: turn off till voice is ready
+	return false;
+	/*
 	//TRACE("IXHV2Engine::isRemoteTalking");
 	//TODO: the xuid given here is the real xuid, the one we provide in xlive.ini is the hex of that the above value
 	//so we need to convert it...
@@ -6124,10 +6129,13 @@ BOOL IXHV2ENGINE::isRemoteTalking(VOID *pThis, XUID xuid) {
 	wsprintf(strw, L"%I64x", xuid);
 	wcstombs(strw3, strw, 8192);
 	XUID id = _atoi64(strw3);
-	return tsUsers->isUserTalking(id);
+	return tsUsers->isUserTalking(id);*/
 }
 
 BOOL IXHV2ENGINE::IsLocalTalking(VOID *pThis, DWORD dwUserIndex) {
+	//TODO: turn off till voice is ready
+	return false;
+	/*
 	//TRACE("IXHV2Engine::isTalking(dwUserIndex = %d)", dwUserIndex);
 	//check the xuid map
 	WCHAR strw[8192];
@@ -6136,6 +6144,7 @@ BOOL IXHV2ENGINE::IsLocalTalking(VOID *pThis, DWORD dwUserIndex) {
 	wcstombs(strw3, strw, 8192);
 	XUID id = _atoi64(strw3);
 	return microphoneEnabled ? tsUsers->isUserTalking(id) : false;
+	*/
 }
 
 
