@@ -294,7 +294,8 @@ void InitInstance()
 				CHECK_ARG("debug_log =", g_debug);
 				CHECK_ARG("gungame =", b_GunGame);
 				CHECK_ARG("port = ", g_port);
-				CHECK_ARG("voice_chat = ", voice_chat);
+				//TODO: turn off till voice chat is ready
+				//CHECK_ARG("voice_chat = ", voice_chat);
 				CHECK_ARG("fps_enable = ", fps_enable);
 				CHECK_ARG_STR("custom_maps_link = ", customMapDownloadLink);
 				CHECK_ARG_STR("custom_maps_zip_link = ", customMapZipDownloadLink);
