@@ -8,8 +8,8 @@ public:
 	void startMapDownload();
 	void searchForMap();
 	void resetMapDownloadUrl(); 
-	void setCustomLobbyMessage(std::wstring newStatus);
-	std::wstring getCustomLobbyMessage();
+	void setCustomLobbyMessage(const wchar_t* newStatus);
+	const wchar_t* getCustomLobbyMessage();
 	void setMapDownloadUrl(std::string url);
 	void setMapDownloadType(std::string type);
 	void requestMapDownloadUrl(SOCKET comm_socket, SOCKADDR_IN SenderAddr);
@@ -29,7 +29,7 @@ private:
 	std::string mapDownloadUrl;
 	std::string mapDownloadType;
 
-	std::wstring customLobbyMessage;
+	const wchar_t* customLobbyMessage = NULL;
 
 	std::set<std::wstring> checkedMaps;
 };

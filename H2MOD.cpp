@@ -980,17 +980,15 @@ int H2MOD::write_chat_literal(const wchar_t* data) {
 }
 
 //0x24499F
-typedef int(__stdcall *show_download_dialog)(BYTE* thisx);
+typedef void(*show_download_dialog)();
 show_download_dialog show_download_dialog_method;
 
-int __stdcall showDownloadDialog(BYTE* thisx) {
-
+void showDownloadDialog() {
 	if (mapManager->canDownload()) {
 		mapManager->startMapDownload();
 	}
 
-	//do nothing instead, so people don't get kicked from the game
-	return 0;
+	//don't call original function, so people don't get kicked from the game
 }
 
 wchar_t* H2MOD::get_local_player_name()
@@ -1590,11 +1588,6 @@ typedef signed int(__cdecl *string_display_hook)(int a3, unsigned int a4, int a5
 string_display_hook string_display_hook_method;
 
 std::wstring YOU_FAILED_TO_LOAD_MAP_ORG = L"You failed to load the map.";
-//std::wstring YOU_FAILED_TO_LOAD_MAP_REPLACE = L"You failed to load the map, trying to download";
-
-//std::wstring WAITING_ORG = L"Waiting for you to start the game";
-//std::wstring WAITING_REPLACE = L"Nigga start the game";
-
 std::wstring EMPTY_STR(L"");
 
 //lets you follow the call path of any string that is displayed (in a debugger)
@@ -1611,10 +1604,11 @@ signed int __cdecl stringDisplayHook(int a3, unsigned int a4, int a5, int a6) {
 			//if (wcscmp(temp, WAITING_ORG.c_str()) == 0) {
 			//return string_display_hook_method(a3, a4, (int)(WAITING_REPLACE.c_str()), a6);
 			//}
-			if (wcscmp(temp, YOU_FAILED_TO_LOAD_MAP_ORG.c_str()) == 0 && mapManager->getCustomLobbyMessage() != EMPTY_STR) {
+			const wchar_t* lobbyMessage = mapManager->getCustomLobbyMessage();
+			if (wcscmp(temp, YOU_FAILED_TO_LOAD_MAP_ORG.c_str()) == 0 && lobbyMessage != NULL) {
 				//if we detect that we failed to load the map, we display different strings only for the duration of
 				//this specific string being displayed
-				return string_display_hook_method(a3, a4, (int)(mapManager->getCustomLobbyMessage().c_str()), a6);
+				return string_display_hook_method(a3, a4, (int)(lobbyMessage), a6);
 			}
 		}
 	}
@@ -1731,14 +1725,13 @@ void H2MOD::ApplyHooks()
 		VirtualProtect(live_check_method4, 4, PAGE_EXECUTE_READWRITE, &dwBack);*/
 
 		//0x24499F
-		//TODO: turn on once performance issue is figured out.
-		//show_download_dialog_method = (show_download_dialog)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x24499F, (BYTE*)showDownloadDialog, 6);
-		//VirtualProtect(show_download_dialog_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		show_download_dialog_method = (show_download_dialog)DetourFunc((BYTE*)h2mod->GetBase() + 0x24499F, (BYTE*)showDownloadDialog, 7);
+		VirtualProtect(show_download_dialog_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		//display_string_hook_method = (display_string_hook)DetourClassFunc((BYTE*)h2mod->GetBase() + 0x21BF85, (BYTE*)displayStringHook, 11);
 		//VirtualProtect(display_string_hook_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
-		//TODO: turn off till custom map downloading is done
+		//TODO: turn on once live checks are turned on for live server list
 		//string_display_hook_method = (string_display_hook)DetourFunc((BYTE*)h2mod->GetBase() + 0x287AB5, (BYTE*)stringDisplayHook, 5);
 		//VirtualProtect(string_display_hook_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
@@ -1748,8 +1741,8 @@ void H2MOD::ApplyHooks()
 		//VirtualProtect(send_text_chat_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 		
 		//TODO: turn on if you want to debug halo2.exe from start of process
-		//is_debugger_present_method = (is_debugger_present)DetourFunc((BYTE*)h2mod->GetBase() + 0x39B394, (BYTE*)isDebuggerPresent, 5);
-		//VirtualProtect(is_debugger_present_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
+		is_debugger_present_method = (is_debugger_present)DetourFunc((BYTE*)h2mod->GetBase() + 0x39B394, (BYTE*)isDebuggerPresent, 5);
+		VirtualProtect(is_debugger_present_method, 4, PAGE_EXECUTE_READWRITE, &dwBack);
 
 		/* experimental live flags
 		DWORD* isLive = (DWORD*)(h2mod->GetBase() + 0x422450);

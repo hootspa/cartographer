@@ -94,12 +94,12 @@ void MapManager::resetMapDownloadUrl() {
 	this->checkedMaps.clear();
 }
 
-void MapManager::setCustomLobbyMessage(std::wstring newStatus) {
+void MapManager::setCustomLobbyMessage(const wchar_t* newStatus) {
 	this->customLobbyMessage = newStatus;
 	Sleep(750);
 }
 
-std::wstring MapManager::getCustomLobbyMessage()
+const wchar_t* MapManager::getCustomLobbyMessage()
 {
 	return this->customLobbyMessage;
 }
@@ -112,10 +112,10 @@ void MapManager::unzipArchive(std::wstring localPath, std::wstring mapsDir) {
 	status = mz_zip_reader_init_file(&zip_archive, std::string(localPath.begin(), localPath.end()).c_str(), 0);
 	if (!status) {
 		TRACE("Failed to open zip file, status=%d", status);
-		this->setCustomLobbyMessage(FAILED_TO_OPEN_ZIP_FILE);
+		this->setCustomLobbyMessage(FAILED_TO_OPEN_ZIP_FILE.c_str());
 		return;
 	}
-	this->setCustomLobbyMessage(UNZIPPING_MAP_DOWNLOAD);
+	this->setCustomLobbyMessage(UNZIPPING_MAP_DOWNLOAD.c_str());
 
 	mz_uint numFiles = mz_zip_reader_get_num_files(&zip_archive);
 	for (int i = 0; i < (int)numFiles; i++) {
@@ -165,13 +165,13 @@ BOOL MapManager::downloadMap(std::wstring mapName) {
 
 	localPath += mapName + L"." + std::wstring(type.begin(), type.end());
 
-	this->setCustomLobbyMessage(DOWNLOADING_MAP);
+	this->setCustomLobbyMessage(DOWNLOADING_MAP.c_str());
 	//TODO: make async
 	//TODO: probably just use libcurl
 	HRESULT res = URLDownloadToFile(NULL, unicodeUrl.c_str(), localPath.c_str(), 0, NULL);
 
 	if (res == S_OK) {
-		this->setCustomLobbyMessage(DOWNLOADING_COMPLETE);
+		this->setCustomLobbyMessage(DOWNLOADING_COMPLETE.c_str());
 		TRACE("Map downloaded");
 		//if we downloaded a zip file, unzip it
 		if (type == "zip") {
@@ -180,7 +180,7 @@ BOOL MapManager::downloadMap(std::wstring mapName) {
 			_wremove(localPath.c_str());
 		}
 
-		this->setCustomLobbyMessage(RELOADING_MAPS);
+		this->setCustomLobbyMessage(RELOADING_MAPS.c_str());
 		this->reloadMaps();
 		//TODO: add counter reset method
 		maxDownloads = 5;
@@ -225,18 +225,18 @@ void MapManager::searchForMap() {
 			return;
 		} 
 
-		this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP);
+		this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP.c_str());
 		if (this->downloadFromUrl()) {
 			return;
 		} 
 
-		this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP);
+		this->setCustomLobbyMessage(STILL_SEARCHING_FOR_MAP.c_str());
 		//TODO: control via xlive property
 		if (this->downloadFromHost()) {
 			return;
 		}
 
-		this->setCustomLobbyMessage(COULD_NOT_FIND_MAPS);
+		this->setCustomLobbyMessage(COULD_NOT_FIND_MAPS.c_str());
 	}
 }
 
@@ -247,13 +247,13 @@ bool MapManager::downloadFromUrl() {
 	//the server has had a chance to send us a download url for the map, so we check if the url is set
 	//over every second for 10 seconds till we find it
 	while (attempts > 0) {
-		this->setCustomLobbyMessage(WAITING_FOR_MAP_DOWNLOAD_URL);
+		this->setCustomLobbyMessage(WAITING_FOR_MAP_DOWNLOAD_URL.c_str());
 		if (!this->mapDownloadUrl.empty()) {
-			this->setCustomLobbyMessage(FOUND_MAP_DOWNLOAD_URL);
+			this->setCustomLobbyMessage(FOUND_MAP_DOWNLOAD_URL.c_str());
 			if (downloadMap(ucurrentMapName)) {
 				//TODO: use constants
 				this->setCustomLobbyMessage(L"Finished");
-				this->setCustomLobbyMessage(L"");
+				this->setCustomLobbyMessage(NULL);
 				return true;
 			}
 			else {
@@ -318,10 +318,8 @@ bool MapManager::canDownload() {
 		return false;
 	}
 
-	for (auto  it = checkedMaps.begin(); it != checkedMaps.end(); ++it)	{
-		std::wstring checkedMap = *it;
-		
-		if (wcscmp(currentMapName, checkedMap.c_str()) == 0) {
+	for (auto it = checkedMaps.begin(); it != checkedMaps.end(); ++it)	{
+		if (wcscmp(currentMapName, it->c_str()) == 0) {
 			//we already downloaded the map, no need to check for it again
 			return false;
 		}
@@ -329,5 +327,6 @@ bool MapManager::canDownload() {
 
 	VirtualProtect(currentMapName, 4, dwBack, NULL);
 
-	return false;
+	//if we made it here, start downloading
+	return true;
 }
