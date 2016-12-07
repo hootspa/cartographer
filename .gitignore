@@ -34,3 +34,4 @@ xliveless.aps
 xliveless.vcxproj.user
 .vs/xliveless/v14/.suo
 *.db
+*.user
