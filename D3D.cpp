@@ -80,23 +80,15 @@ float getElapsedTime(void) {
 	return (float)((c.QuadPart - counterAtStart.QuadPart) * 1000.0f / (float)timerFreq.QuadPart);
 }
 
-
+float desiredRenderTime = 16.4f;//(1000.0f / 58) - 0.2f;
 void frameTimeManagement() {
 	float renderTime = getElapsedTime() - lastPresentTime;
-
-	// implement FPS threshold
-	//float thresholdRenderTime = (1000.0f / 28) + 0.2f;
-	//if (renderTime > thresholdRenderTime) lowFPSmode = true;
-	//else if (renderTime < thresholdRenderTime - 1.0f) lowFPSmode = false;
-
-	// implement FPS cap
 	
-		float desiredRenderTime = (1000.0f / 58) - 0.2f;
-		while (renderTime < desiredRenderTime) {
-			SwitchToThread();
-			renderTime = getElapsedTime() - lastPresentTime;
-		}
-		lastPresentTime = getElapsedTime();
+	while (renderTime < desiredRenderTime) {
+		SwitchToThread();
+		renderTime = getElapsedTime() - lastPresentTime;
+	}
+	lastPresentTime = getElapsedTime();
 	
 }
 
