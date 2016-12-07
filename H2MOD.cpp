@@ -6,7 +6,6 @@
 #include "H2MOD_GunGame.h"
 #include "H2MOD_Infection.h"
 #include "H2MOD_Network.h"
-#include "H2MOD_Hitfix.h"
 #include "Network.h"
 #include "xliveless.h"
 #include "Globals.h"
@@ -42,10 +41,8 @@ H2MOD *h2mod = new H2MOD();
 //SecurityUtil securityUtil(secureMod);
 GunGame *gg = new GunGame();
 Infection *inf = new Infection();
-H2Hitfix *hitfix = new H2Hitfix();
 
 bool b_Infection = false;
-bool b_Hitfix = false;
 
 extern MapManager* mapManager;
 extern bool b_GunGame;
@@ -1268,7 +1265,6 @@ int __cdecl OnMapLoad(int a1)
 {
 	b_Infection = false;
 	b_GunGame = false;
-	b_Hitfix = false;
 	
 	wchar_t* variant_name;
 
@@ -1290,12 +1286,6 @@ int __cdecl OnMapLoad(int a1)
 	{
 		TRACE_GAME("[h2mod] GunGame Turned on!");
 		b_GunGame = true;
-	}
-
-	if (wcsstr(variant_name, L"hitfix") > 0 || wcsstr(variant_name, L"HITFIX") > 0 || wcsstr(variant_name, L"HitFix") > 0)
-	{
-		TRACE_GAME("[h2mod] Hitfix Turned on!");
-		b_Hitfix = true;
 	}
 
 #pragma region COOP FIXES
@@ -1339,6 +1329,12 @@ int __cdecl OnMapLoad(int a1)
 			TRACE("Loading mainmenu");
 			isLobby = true;
 			MasterState = 5;
+
+			//Crashfix
+			*(int*)(h2mod->GetBase() + 0x464940) = 0;
+			*(int*)(h2mod->GetBase() + 0x46494C) = 0;
+			*(int*)(h2mod->GetBase() + 0x464958) = 0;
+			*(int*)(h2mod->GetBase() + 0x464964) = 0;
 		}
 		else
 		{
@@ -1404,8 +1400,16 @@ int __cdecl OnMapLoad(int a1)
 		#pragma endregion
 
 		#pragma region HitFix Handler
-			if (b_Hitfix)
-				hitfix->Initialize(h2mod->Server);
+			int offset = 0x47CD54;
+			if (h2mod->Server)
+				offset = 0x4A29BC;
+
+			DWORD AddressOffset = *(DWORD*)((char*)h2mod->GetBase() + offset);
+
+			*(float*)(AddressOffset + 0xA4EC88) = 2400.0f; // battle_rifle_bullet.proj Initial Velocity 
+			*(float*)(AddressOffset + 0xA4EC8C) = 2400.0f; //battle_rifle_bullet.proj Final Velocity
+			*(float*)(AddressOffset + 0xB7F914) = 5000.0f; //sniper_bullet.proj Initial Velocity
+			*(float*)(AddressOffset + 0xB7F918) = 5000.0f; //sniper_bullet.proj Final Velocity
 		#pragma endregion
 	}
 

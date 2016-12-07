@@ -117,9 +117,6 @@
     <ClCompile Include="miniz.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="H2MOD_Hitfix.cpp">
-      <Filter>Source Files\H2MOD\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="H2Ban.cpp">
       <Filter>Source Files\H2MOD\Source Files</Filter>
     </ClCompile>
@@ -207,9 +204,6 @@
       <Filter>Source Files\H2MOD\Source Files</Filter>
     </ClInclude>
     <ClInclude Include="H2MOD_MapManager.h">
-      <Filter>Source Files\H2MOD\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="H2MOD_Hitfix.h">
       <Filter>Source Files\H2MOD\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="H2Ban.h">
