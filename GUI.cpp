@@ -119,48 +119,9 @@ void GUI::Initialize()
 }
 
 // #5001
-DWORD base;
-POINTS last = { 0 };
+
 int WINAPI XLiveInput(XLIVE_INPUT_INFO* pPii)
 {
-	if (!h2mod)
-		return 1;
-	else
-		base = h2mod->GetBase();
-
-	switch (pPii->uMSG)
-	{
-	case WM_MOUSEMOVE:
-		{
-			POINTS current = MAKEPOINTS(pPii->lParam);
-
-			float horizontal_delta = (current.x - last.x) * 110 / 2.2;
-			float vertical_delta = (current.y - last.y) * 110 / 2.2;
-			float horizontal_previous = *(float*)(0x30004CD0);
-			float vertical_previous = *(float*)(0x30004CD4);
-			
-			horizontal_previous -= horizontal_delta;
-			*(float*)(0x30004CD0) = fmod(horizontal_previous, 6.2831f);
-
-
-			const float max = 1.492256522f;
-
-			float verticle = fmod(vertical_previous, 2.2831f);
-			if (verticle > max || verticle < -max)
-				verticle = vertical_previous;
-
-			*(float*)(0x30004CD4) = verticle;
-
-			last = current;
-
-			break;
-		}
-	case WM_INPUT:
-		{
-			TRACE_GAME("input");
-		}
-	}
-
 	return 1;
 }
 
