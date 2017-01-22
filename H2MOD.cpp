@@ -6,6 +6,7 @@
 #include "H2MOD_GunGame.h"
 #include "H2MOD_Infection.h"
 #include "H2MOD_Halo2Final.h"
+#include "H2MOD_RawMouseInput.h"
 #include "Network.h"
 #include "xliveless.h"
 #include "CUser.h"
@@ -18,6 +19,7 @@ H2MOD *h2mod = new H2MOD();
 GunGame *gg = new GunGame();
 Infection *inf = new Infection();
 Halo2Final *h2f = new Halo2Final();
+RawMouseInput *rmi = new RawMouseInput();
 
 bool b_Infection = false;
 bool b_Halo2Final = false;
@@ -1519,6 +1521,8 @@ void H2MOD::Initialize()
 	float fovRadians = (float)((field_of_view * 3.14159265f) / 180);
 	*(float*)(this->GetBase() + 0x41D984) = fovRadians; //player
 	*(float*)(this->GetBase() + 0x413780) = fovRadians * 0.8435f; //vehicle
+
+	rmi->Initialize();
 	
 	h2mod->ApplyHooks();
 }
