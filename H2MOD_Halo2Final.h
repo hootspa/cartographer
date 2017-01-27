@@ -18,6 +18,9 @@ public:
 	bool player_turn_off_spawn_protection = true;
 	bool player_turn_off_overshield_shader = true;
 
+	//spawns
+	float max_random_spawn_bias = 0.005f;
+
 	//BR
 	float br_autoaim_angle = 0.0095f;
 	float br_autoaim_range = 30.f;
@@ -113,8 +116,7 @@ public:
 	//Plasma Grenade
 	float pg_arming_time = 2.f;
 
-	//Player Spawns
-	float ps_max_random_spawn_bias = 0.005f;
+
 };
 
 class Halo2Final
