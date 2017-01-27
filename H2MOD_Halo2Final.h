@@ -12,6 +12,8 @@ public:
 	float melee_angles_y = 0.05f;
 	float melee_angles_p = 0.02f;
 	float melee_depth = 0.7f;
+	float player_run_acceleration = 9.6f;
+	float player_airborn_acceleration = 1.05f;
 	bool player_turn_off_melee_lunge = false;
 	bool player_turn_off_spawn_protection = true;
 	bool player_turn_off_overshield_shader = true;
@@ -54,6 +56,8 @@ public:
 	float r_damage_upper_bound_max = 600.f;
 	float r_camo_ding = 1.f;
 	float r_camo_regrowth_rate = 0.25f;
+	float r_radius_min = 1;
+	float r_radius_max = 1;
 
 	//Smg
 	float smg_rounds_per_second_min = 15.f;

@@ -218,6 +218,8 @@ void Halo2Final::Initialize(bool isHost)
 			CHECK_ARG_FLOAT("melee_angles_y = ", settings->melee_angles_y);
 			CHECK_ARG_FLOAT("melee_angles_p = ", settings->melee_angles_p);
 			CHECK_ARG_FLOAT("melee_depth = ", settings->melee_depth);
+			CHECK_ARG_FLOAT("player_run_acceleration = ", settings->player_run_acceleration);
+			CHECK_ARG_FLOAT("player_airborn_acceleration = ", settings->player_airborn_acceleration);
 			CHECK_ARG("player_turn_off_melee_lunge = ", settings->player_turn_off_melee_lunge);
 			CHECK_ARG("player_turn_off_spawn_protection = ", settings->player_turn_off_spawn_protection);
 			CHECK_ARG("player_turn_off_overshield_shader = ", settings->player_turn_off_overshield_shader);
@@ -250,6 +252,8 @@ void Halo2Final::Initialize(bool isHost)
 			CHECK_ARG_FLOAT("r_damage_upper_bound_max = ", settings->r_damage_upper_bound_max);
 			CHECK_ARG_FLOAT("r_camo_ding = ", settings->r_camo_ding);
 			CHECK_ARG_FLOAT("r_camo_regrowth_rate = ", settings->r_camo_regrowth_rate);
+			CHECK_ARG_FLOAT("r_radius_min = ", settings->r_radius_min);
+			CHECK_ARG_FLOAT("r_radius_max = ", settings->r_radius_max);
 			CHECK_ARG_FLOAT("smg_rounds_per_second_min = ", settings->smg_rounds_per_second_min);
 			CHECK_ARG_FLOAT("smg_rounds_per_second_max = ", settings->smg_rounds_per_second_max);
 			CHECK_ARG_FLOAT("smg_minimum_error = ", settings->smg_minimum_error);
@@ -324,6 +328,8 @@ void Halo2Final::Initialize(bool isHost)
 	//globals.matg
 	*(float*)(address_offset + 0x3DBE4) = settings->magnetism_friction;
 	*(float*)(address_offset + 0x3DBE8) = settings->magnetism_adhesion;
+	*(float*)(address_offset + 0x3E2C8) = settings->player_run_acceleration;
+	*(float*)(address_offset + 0x3E2DC) = settings->player_airborn_acceleration;
 
 	//Battle Rifle
 	*(float*)(address_offset + 0xA49A7C) = settings->br_fire_recovery_time;
@@ -368,7 +374,7 @@ void Halo2Final::Initialize(bool isHost)
 	*(float*)(address_offset + 0x9C0C80) = settings->n_camo_regrowth_rate;
 	*(byte*)(address_offset + 0x9C0B2E) = 0; // No dual Wielding
 
-											 //PR
+	//PR
 	*(float*)(address_offset + 0xAB3D98) = settings->pr_stun;
 	*(float*)(address_offset + 0xAB3D9C) = settings->pr_max_stun;
 	*(float*)(address_offset + 0xAB3DA0) = settings->pr_stun_time;
@@ -382,7 +388,7 @@ void Halo2Final::Initialize(bool isHost)
 	*(float*)(address_offset + 0xAAE314) = settings->pr_camo_regrowth_rate;
 	*(byte*)(address_offset + 0xAAE1C2) = 2; // No dual Wielding
 
-											 //Rocket
+	//Rocket
 	*(float*)(address_offset + 0xBE0CF4) = settings->r_initial_velocity;
 	*(float*)(address_offset + 0xBE236C) = settings->r_damage_upper_bound_min;
 	*(float*)(address_offset + 0xBE2370) = settings->r_damage_upper_bound_max;
@@ -391,9 +397,11 @@ void Halo2Final::Initialize(bool isHost)
 	*(float*)(address_offset + 0xBDBC04) = settings->melee_depth;
 	*(float*)(address_offset + 0xBDBCC8) = settings->r_camo_ding;
 	*(float*)(address_offset + 0xBDBCCC) = settings->r_camo_regrowth_rate;
+	*(float*)(address_offset + 0xBE234C) = settings->r_radius_min;
+	*(float*)(address_offset + 0xBE2350) = settings->r_radius_max;
 	*(float*)(address_offset + 0xBDBC54) = 0.0f; // Auto Aim Angle Radians
 
-												 //Smg
+	//Smg
 	*(float*)(address_offset + 0xB1E5EC) = settings->smg_rounds_per_second_min;
 	*(float*)(address_offset + 0xB1E5F0) = settings->smg_rounds_per_second_max;
 	*(float*)(address_offset + 0xB1E658) = settings->smg_minimum_error;
@@ -408,7 +416,7 @@ void Halo2Final::Initialize(bool isHost)
 	*(float*)(address_offset + 0xB1E40C) = settings->smg_camo_regrowth_rate;
 	*(byte*)(address_offset + 0xB1E2BA) = 2; // No dual Wielding
 
-											 //Magnum
+	//Magnum
 	*(float*)(address_offset + 0x96EC88) = settings->mag_error_angle_min;
 	*(float*)(address_offset + 0x96EC8C) = settings->mag_error_angle_max;
 	*(float*)(address_offset + 0x97A29C) = settings->mag_damage_lower_bound;
@@ -421,7 +429,7 @@ void Halo2Final::Initialize(bool isHost)
 	*(float*)(address_offset + 0x96E9F8) = settings->mag_camo_regrowth_rate;
 	*(byte*)(address_offset + 0x96E8A6) = 0; // No dual Wielding
 
-											 //PP
+	//PP
 	*(float*)(address_offset + 0xA0D27C) = settings->pp_initial_velocity;
 	*(float*)(address_offset + 0xA0D280) = settings->pp_final_velocity;
 	*(float*)(address_offset + 0xA0D284) = settings->pp_guided_angular_velocity_lower;
@@ -434,7 +442,7 @@ void Halo2Final::Initialize(bool isHost)
 	*(float*)(address_offset + 0xA02FB4) = settings->pp_camo_regrowth_rate;
 	*(byte*)(address_offset + 0xA02E62) = 0; // No dual Wielding
 
-											 //Carbine
+	//Carbine
 	*(float*)(address_offset + 0xA7C428) = settings->car_error_angle;
 	*(float*)(address_offset + 0xA7C42C) = settings->car_error_angle;
 	*(float*)(address_offset + 0xA84DD4) = settings->hitscan_projectile_velocity;
@@ -476,7 +484,7 @@ void Halo2Final::Initialize(bool isHost)
 	*(byte*)(address_offset + 0xD82A1C) = 2; // When at rest
 	*(byte*)(address_offset + 0xD83038 + 2) = 0; // Force Unattached Effects
 
-												 //Plasma Grenade
+	//Plasma Grenade
 	*(float*)(address_offset + 0xD834E8) = settings->pg_arming_time;
 
 	//Player Spawns
